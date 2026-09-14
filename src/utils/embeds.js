@@ -11,12 +11,16 @@ const SUCCESS_COLOR = 0x00FF88;
 const ERROR_COLOR = 0xFF2D55;
 const WARN_COLOR = 0xFFB800;
 
+function getLogo() {
+  return config.bot.logoUrl || 'https://raw.githubusercontent.com/xritx2-bit/DC-BOT/main/assets/logo.png';
+}
+
 function baseEmbed() {
   return new EmbedBuilder()
     .setColor(PRIMARY_COLOR)
     .setFooter({
       text: `${config.bot.name} • Futuristic Server Protocol`,
-      iconURL: 'https://cdn.discordapp.com/emojis/1049382903932825640.webp?size=96&quality=lossless'
+      iconURL: getLogo()
     })
     .setTimestamp();
 }
@@ -49,6 +53,7 @@ function ticketPanelEmbed() {
   return new EmbedBuilder()
     .setColor(PRIMARY_COLOR)
     .setTitle(`⚡ ${botName} // SUPPORT & DISPATCH NEXUS`)
+    .setThumbnail(getLogo())
     .setDescription(
       `**"${tagline}"**\n\n` +
       `Welcome to the **Community Support Hub**. Our automated engine routes your request directly to server operators and support officers.\n\n` +
@@ -58,8 +63,8 @@ function ticketPanelEmbed() {
       `• 🛡️ **Report / Incident**: Report user harassment, exploits, or rule violations.\n\n` +
       `*Click the corresponding button below to initiate an encrypted ticket session.*`
     )
-    .setImage('https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=1200&q=80')
-    .setFooter({ text: `${botName} • Ticket Protocol v2.6` })
+    .setImage(getLogo())
+    .setFooter({ text: `${botName} • Ticket Protocol v2.6`, iconURL: getLogo() })
     .setTimestamp();
 }
 
@@ -69,6 +74,7 @@ function ticketWelcomeEmbed(user, categoryLabel) {
   return new EmbedBuilder()
     .setColor(PRIMARY_COLOR)
     .setTitle(`🎫 SUPPORT SESSION INITIALIZED // ${categoryLabel.toUpperCase()}`)
+    .setThumbnail(getLogo())
     .setDescription(
       `Greetings, <@${user.id}>.\n\n` +
       `Your private encrypted support channel is now active. Server staff has been alerted.\n\n` +
@@ -82,7 +88,7 @@ function ticketWelcomeEmbed(user, categoryLabel) {
       { name: '📂 Protocol Category', value: categoryLabel, inline: true },
       { name: '🔒 Security Level', value: 'Private Staff Encrypted', inline: true }
     )
-    .setFooter({ text: `${botName} • Click Close below to finalize this ticket.` })
+    .setFooter({ text: `${botName} • Click Close below to finalize this ticket.`, iconURL: getLogo() })
     .setTimestamp();
 }
 

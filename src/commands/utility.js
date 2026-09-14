@@ -49,10 +49,12 @@ module.exports = {
       const openTickets = getActiveTickets().length;
       const openDms = getActiveSessions().length;
 
+      const logo = config.bot.logoUrl || client.user.displayAvatarURL();
+
       const embed = new EmbedBuilder()
         .setColor(PRIMARY_COLOR)
         .setTitle(`⚡ ${botName} // CORE TELEMETRY`)
-        .setThumbnail(client.user.displayAvatarURL())
+        .setThumbnail(logo)
         .setDescription(
           `**"${tagline}"**\n\n` +
           `High-performance support and utility engine running on Node.js ${process.version} and Discord.js v${djsVersion}.`
@@ -68,7 +70,7 @@ module.exports = {
           { name: '💻 System Host', value: `\`${os.type()} (${os.arch()})\``, inline: true },
           { name: '⏱️ Engine Uptime', value: `\`${formatUptime(process.uptime())}\``, inline: true }
         )
-        .setFooter({ text: `Console Port: ${config.console.port || 3000}` })
+        .setFooter({ text: `Console Port: ${config.console.port || 3000}`, iconURL: logo })
         .setTimestamp();
 
       return message.reply({ embeds: [embed] });

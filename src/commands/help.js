@@ -10,9 +10,12 @@ module.exports = {
     const botName = config.bot.name || 'NEXUS ENGINE';
     const tagline = config.bot.tagline || 'Next-Gen Autonomous Support & Server Operations';
 
+    const logo = config.bot.logoUrl || 'https://raw.githubusercontent.com/xritx2-bit/DC-BOT/main/assets/logo.png';
+
     const embed = new EmbedBuilder()
       .setColor(PRIMARY_COLOR)
       .setTitle(`⚡ ${botName} // COMMAND MANUAL`)
+      .setThumbnail(logo)
       .setDescription(
         `**"${tagline}"**\n\n` +
         `**${botName}** is your server's dedicated support, utility, and management engine. Below are the operational directives and command protocols available on this grid.`
@@ -61,7 +64,8 @@ module.exports = {
         }
       )
       .setFooter({
-        text: `Prefix: ${p} • Access the Cyber-Deck Web Console at port ${config.console.port || 3000}`
+        text: `Prefix: ${p} • Access the Cyber-Deck Web Console at port ${config.console.port || 3000}`,
+        iconURL: logo
       })
       .setTimestamp();
 

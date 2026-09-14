@@ -6,6 +6,7 @@
     "statusText": "?help | ABYSS",
     "statusType": "PLAYING",
     "presence": "online",
+    "logoUrl": "https://raw.githubusercontent.com/xritx2-bit/DC-BOT/main/assets/logo.png",
     "themeColor": "#FF1E27",
     "accentColor": "#00F3FF",
     "darkColor": "#0A0B0E"

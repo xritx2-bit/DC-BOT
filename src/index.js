@@ -78,6 +78,20 @@ class BotManager {
       } catch (err) {
         logger.error(`Presence synchronization error: ${err.message}`);
       }
+
+      // Sync bot avatar to official ABYSS logo
+      try {
+        const path = require('path');
+        const fs = require('fs');
+        const logoPath = path.join(__dirname, '../assets/logo.png');
+        if (fs.existsSync(logoPath)) {
+          client.user.setAvatar(logoPath).then(() => {
+            logger.system('Bot profile avatar synchronized with official ABYSS logo.');
+          }).catch(err => {
+            logger.system(`Avatar sync notice: ${err.message}`);
+          });
+        }
+      } catch (err) {}
     });
 
     // Message Event (Commands & Modmail)

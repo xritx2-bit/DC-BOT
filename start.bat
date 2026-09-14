@@ -7,6 +7,10 @@ echo    ABYSS // FUTURISTIC DISCORD BOT & CYBER-DECK COMMAND CONSOLE
 echo    Into the dark. Full autonomous server command.
 echo ======================================================================
 echo.
+echo [NOTICE] If your bot is deployed 24/7 on Railway, running this local
+echo          instance will cause Discord to receive duplicate messages.
+echo          Only run this if Railway is paused or for local development.
+echo.
 
 :: Check Node.js
 where node >nul 2>nul
