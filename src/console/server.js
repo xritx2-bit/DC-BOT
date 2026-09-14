@@ -297,8 +297,8 @@ function startConsoleServer(client, botManager) {
     sendTelemetry(io, client);
   }, 2000);
 
-  server.listen(port, () => {
-    logger.console(`⚡ CYBER-DECK COMMAND CONSOLE ONLINE at http://localhost:${port}`);
+  server.listen(port, '0.0.0.0', () => {
+    logger.console(`⚡ CYBER-DECK COMMAND CONSOLE ONLINE at http://0.0.0.0:${port}`);
   });
 
   return { app, server, io };

@@ -46,11 +46,38 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Change Backend Relay URL button
+  const changeRelayBtn = document.getElementById('change-relay-btn');
+  if (changeRelayBtn) {
+    changeRelayBtn.addEventListener('click', () => {
+      const current = localStorage.getItem('abyss_relay_url') || window.location.origin;
+      const next = prompt('Enter Railway Backend Relay URL (e.g. https://...up.railway.app):', current);
+      if (next !== null) {
+        localStorage.setItem('abyss_relay_url', next.trim());
+        location.reload();
+      }
+    });
+  }
+
   // ================= AUTHENTICATION MODAL =================
   const authModal = document.getElementById('auth-modal');
   const authForm = document.getElementById('auth-form');
   const authPassword = document.getElementById('auth-password');
   const authError = document.getElementById('auth-error');
+
+  function getBackendUrl() {
+    const saved = localStorage.getItem('abyss_relay_url');
+    if (saved && saved.trim()) {
+      return saved.trim().replace(/\/+$/, '');
+    }
+    return window.location.origin;
+  }
+
+  // Pre-fill relay URL input if stored
+  const authRelayInput = document.getElementById('auth-relay-url');
+  if (authRelayInput && localStorage.getItem('abyss_relay_url')) {
+    authRelayInput.value = localStorage.getItem('abyss_relay_url');
+  }
 
   const cachedToken = sessionStorage.getItem('cyber_deck_token');
   if (cachedToken) {
@@ -62,9 +89,13 @@ document.addEventListener('DOMContentLoaded', () => {
     e.preventDefault();
     authError.textContent = '';
     const pass = authPassword.value.trim();
+    if (authRelayInput && authRelayInput.value.trim()) {
+      localStorage.setItem('abyss_relay_url', authRelayInput.value.trim());
+    }
 
     try {
-      const res = await fetch('/api/auth', {
+      const backend = getBackendUrl();
+      const res = await fetch(`${backend}/api/auth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pass })
@@ -81,7 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
         playBeepError();
       }
     } catch (err) {
-      authError.textContent = 'Relay communication error.';
+      authError.textContent = 'Relay communication error: ' + (err.message || 'Check Railway URL');
       playBeepError();
     }
   });
@@ -110,7 +141,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // ================= SOCKET.IO & TELEMETRY =================
   function initSocketConnection() {
     if (socket) return;
-    socket = io();
+    const backend = getBackendUrl();
+    socket = io(backend, { transports: ['websocket', 'polling'] });
 
     const wsStatusPill = document.getElementById('ws-latency-val');
     const termScreen = document.getElementById('terminal-screen');
@@ -458,7 +490,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Fetch Channels for Dropdown
   async function loadChannelsDropdown() {
     try {
-      const res = await fetch('/api/channels');
+      const backend = getBackendUrl();
+      const res = await fetch(`${backend}/api/channels`);
       const data = await res.json();
       embedChanSelect.innerHTML = '<option value="">-- Select Channel --</option>';
 
@@ -548,7 +581,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusMsg = document.getElementById('vault-status-msg');
 
     try {
-      const res = await fetch('/api/save-token', {
+      const backend = getBackendUrl();
+      const res = await fetch(`${backend}/api/save-token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, clientId })

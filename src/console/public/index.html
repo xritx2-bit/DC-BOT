@@ -32,6 +32,10 @@
           <span class="input-prefix">KEY &gt;</span>
           <input type="password" id="auth-password" placeholder="Passcode (Default: cyber_admin_2026)" autocomplete="off" required>
         </div>
+        <div class="input-group" id="relay-url-group">
+          <span class="input-prefix">HUB &gt;</span>
+          <input type="text" id="auth-relay-url" placeholder="Railway URL (e.g. https://...up.railway.app)" autocomplete="off">
+        </div>
         <div id="auth-error" class="error-msg"></div>
         <button type="submit" id="auth-submit-btn" class="cyber-btn primary">
           <span>AUTHENTICATE &amp; ENGAGE</span>
@@ -69,6 +73,9 @@
 
       <!-- Control buttons -->
       <div class="header-actions">
+        <button id="change-relay-btn" class="icon-btn" title="Change Railway Relay Link">
+          <span>🌐 HUB</span>
+        </button>
         <button id="sfx-toggle-btn" class="icon-btn" title="Toggle Cyber Audio FX">
           <span id="sfx-icon">🔊</span>
         </button>
