@@ -86,21 +86,32 @@ async function handleTicketButton(interaction) {
       if (!category) {
         category = await guild.channels.create({
           name: config.tickets.categoryName,
-          type: ChannelType.GuildCategory,
-          permissionOverwrites: [
-            {
-              id: guild.id,
-              deny: [PermissionsBitField.Flags.ViewChannel]
-            }
-          ]
+          type: ChannelType.GuildCategory
         });
       }
 
-      // Prepare permission overwrites
+      // If category has @everyone denied ViewChannel, remove the deny so members can see their tickets
+      const everyoneOverwrite = category.permissionOverwrites.cache.get(guild.roles.everyone.id);
+      if (everyoneOverwrite && everyoneOverwrite.deny.has(PermissionsBitField.Flags.ViewChannel)) {
+        await category.permissionOverwrites.edit(guild.roles.everyone.id, {
+          ViewChannel: null
+        }).catch(() => {});
+      }
+
+      // Explicitly allow the user to view the category header
+      await category.permissionOverwrites.edit(user.id, {
+        ViewChannel: true,
+        ReadMessageHistory: true
+      }).catch(() => {});
+
+      // Prepare permission overwrites for the ticket channel
       const permissionOverwrites = [
         {
-          id: guild.id,
-          deny: [PermissionsBitField.Flags.ViewChannel]
+          id: guild.roles.everyone.id,
+          deny: [
+            PermissionsBitField.Flags.ViewChannel,
+            PermissionsBitField.Flags.SendMessages
+          ]
         },
         {
           id: user.id,
@@ -109,7 +120,8 @@ async function handleTicketButton(interaction) {
             PermissionsBitField.Flags.SendMessages,
             PermissionsBitField.Flags.ReadMessageHistory,
             PermissionsBitField.Flags.AttachFiles,
-            PermissionsBitField.Flags.EmbedLinks
+            PermissionsBitField.Flags.EmbedLinks,
+            PermissionsBitField.Flags.AddReactions
           ]
         },
         {
@@ -118,6 +130,7 @@ async function handleTicketButton(interaction) {
             PermissionsBitField.Flags.ViewChannel,
             PermissionsBitField.Flags.SendMessages,
             PermissionsBitField.Flags.ManageChannels,
+            PermissionsBitField.Flags.ManageMessages,
             PermissionsBitField.Flags.ReadMessageHistory
           ]
         }
@@ -149,6 +162,11 @@ async function handleTicketButton(interaction) {
         permissionOverwrites
       });
 
+      // Explicitly enforce channel permissions to prevent category inheritance wiping
+      await ticketChannel.permissionOverwrites.set(permissionOverwrites).catch(err => {
+        logger.error(`Failed to enforce channel overwrites: ${err.message}`);
+      });
+
       activeTickets.set(ticketChannel.id, {
         channelId: ticketChannel.id,
         userId: user.id,
@@ -163,13 +181,13 @@ async function handleTicketButton(interaction) {
 
       // Send welcome message in ticket channel
       await ticketChannel.send({
-        content: `<@${user.id}> 🔔 Staff ping: <@&${guild.roles.everyone.id}>`,
+        content: `<@${user.id}> 🔔 Your support session is ready. Staff have been alerted.`,
         embeds: [ticketWelcomeEmbed(user, categoryConfig.label)],
         components: getTicketControlButtons()
       });
 
       await interaction.editReply({
-        embeds: [successEmbed('Ticket Initialized', `Your encrypted support channel has been created: <#${ticketChannel.id}>`)],
+        embeds: [successEmbed('Ticket Initialized', `Your encrypted support channel has been created: **#${ticketChannel.name}** (<#${ticketChannel.id}>)`)],
         ephemeral: true
       });
     } catch (err) {
