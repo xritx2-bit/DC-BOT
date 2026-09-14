@@ -66,9 +66,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const authError = document.getElementById('auth-error');
 
   function getBackendUrl() {
-    const saved = localStorage.getItem('abyss_relay_url');
+    let saved = localStorage.getItem('abyss_relay_url');
     if (saved && saved.trim()) {
-      return saved.trim().replace(/\/+$/, '');
+      saved = saved.trim().replace(/\/+$/, '');
+      if (!saved.startsWith('http://') && !saved.startsWith('https://')) {
+        saved = 'https://' + saved;
+      }
+      return saved;
     }
     return window.location.origin;
   }
