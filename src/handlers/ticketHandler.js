@@ -78,9 +78,10 @@ async function handleTicketButton(interaction) {
     await interaction.deferReply({ ephemeral: true });
 
     try {
-      // Find or create category
-      let category = guild.channels.cache.find(
-        c => c.type === ChannelType.GuildCategory && c.name.toLowerCase() === config.tickets.categoryName.toLowerCase()
+      // Fetch fresh channels from Discord REST API to eliminate stale deleted channels in cache
+      const freshChannels = await guild.channels.fetch().catch(() => guild.channels.cache);
+      let category = freshChannels.find(
+        c => c && c.type === ChannelType.GuildCategory && c.name.toLowerCase() === config.tickets.categoryName.toLowerCase()
       );
 
       if (!category) {
@@ -154,13 +155,39 @@ async function handleTicketButton(interaction) {
       const sanitizedUsername = user.username.toLowerCase().replace(/[^a-z0-9]/g, '');
       const channelName = `ticket-${sanitizedUsername || 'user'}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-      const ticketChannel = await guild.channels.create({
-        name: channelName,
-        type: ChannelType.GuildText,
-        parent: category.id,
-        topic: `Ticket by ${user.tag} (${user.id}) | Category: ${categoryConfig.label}`,
-        permissionOverwrites
-      });
+      let ticketChannel;
+      try {
+        ticketChannel = await guild.channels.create({
+          name: channelName,
+          type: ChannelType.GuildText,
+          parent: category.id,
+          topic: `Ticket by ${user.tag} (${user.id}) | Category: ${categoryConfig.label}`,
+          permissionOverwrites
+        });
+      } catch (createErr) {
+        if (createErr.message && (createErr.message.includes('CHANNEL_PARENT_INVALID') || createErr.message.includes('Category does not exist'))) {
+          // Stale category detected - create fresh category and retry
+          category = await guild.channels.create({
+            name: config.tickets.categoryName,
+            type: ChannelType.GuildCategory
+          });
+          ticketChannel = await guild.channels.create({
+            name: channelName,
+            type: ChannelType.GuildText,
+            parent: category.id,
+            topic: `Ticket by ${user.tag} (${user.id}) | Category: ${categoryConfig.label}`,
+            permissionOverwrites
+          });
+        } else {
+          // Fallback without parent
+          ticketChannel = await guild.channels.create({
+            name: channelName,
+            type: ChannelType.GuildText,
+            topic: `Ticket by ${user.tag} (${user.id}) | Category: ${categoryConfig.label}`,
+            permissionOverwrites
+          });
+        }
+      }
 
       // Explicitly enforce channel permissions to prevent category inheritance wiping
       await ticketChannel.permissionOverwrites.set(permissionOverwrites).catch(err => {

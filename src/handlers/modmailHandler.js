@@ -36,9 +36,10 @@ async function handleDirectMessage(client, message) {
     }
 
     if (!channel) {
-      // Find or create category
-      let category = guild.channels.cache.find(
-        c => c.type === ChannelType.GuildCategory && c.name.toLowerCase() === config.modmail.categoryName.toLowerCase()
+      // Fetch fresh channels from Discord REST API to eliminate stale deleted channels in cache
+      const freshChannels = await guild.channels.fetch().catch(() => guild.channels.cache);
+      let category = freshChannels.find(
+        c => c && c.type === ChannelType.GuildCategory && c.name.toLowerCase() === config.modmail.categoryName.toLowerCase()
       );
 
       if (!category) {
@@ -47,7 +48,7 @@ async function handleDirectMessage(client, message) {
           type: ChannelType.GuildCategory,
           permissionOverwrites: [
             {
-              id: guild.id,
+              id: guild.roles.everyone.id,
               deny: [PermissionsBitField.Flags.ViewChannel]
             }
           ]
@@ -57,7 +58,7 @@ async function handleDirectMessage(client, message) {
       // Channel permissions
       const permissionOverwrites = [
         {
-          id: guild.id,
+          id: guild.roles.everyone.id,
           deny: [PermissionsBitField.Flags.ViewChannel]
         },
         {
@@ -88,13 +89,36 @@ async function handleDirectMessage(client, message) {
       const sanitizedUsername = user.username.toLowerCase().replace(/[^a-z0-9]/g, '');
       const channelName = `dm-${sanitizedUsername || 'user'}`;
 
-      channel = await guild.channels.create({
-        name: channelName,
-        type: ChannelType.GuildText,
-        parent: category.id,
-        topic: `Direct Support Session for ${user.tag} (ID: ${user.id})`,
-        permissionOverwrites
-      });
+      try {
+        channel = await guild.channels.create({
+          name: channelName,
+          type: ChannelType.GuildText,
+          parent: category.id,
+          topic: `Direct Support Session for ${user.tag} (ID: ${user.id})`,
+          permissionOverwrites
+        });
+      } catch (err) {
+        if (err.message && (err.message.includes('CHANNEL_PARENT_INVALID') || err.message.includes('Category does not exist'))) {
+          category = await guild.channels.create({
+            name: config.modmail.categoryName,
+            type: ChannelType.GuildCategory
+          });
+          channel = await guild.channels.create({
+            name: channelName,
+            type: ChannelType.GuildText,
+            parent: category.id,
+            topic: `Direct Support Session for ${user.tag} (ID: ${user.id})`,
+            permissionOverwrites
+          });
+        } else {
+          channel = await guild.channels.create({
+            name: channelName,
+            type: ChannelType.GuildText,
+            topic: `Direct Support Session for ${user.tag} (ID: ${user.id})`,
+            permissionOverwrites
+          });
+        }
+      }
 
       activeSessions.set(user.id, {
         channelId: channel.id,

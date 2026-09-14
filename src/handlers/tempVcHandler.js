@@ -28,24 +28,36 @@ async function handleVoiceStateUpdate(oldState, newState) {
         const channelName = `🔊・${sanitizedName}'s Lounge`;
 
         // Create temporary private VC
-        const tempChannel = await guild.channels.create({
-          name: channelName,
-          type: ChannelType.GuildVoice,
-          parent: parentCategory ? parentCategory.id : null,
-          userLimit: config.tempVoice.defaultUserLimit || 0,
-          permissionOverwrites: [
-            {
-              id: member.id,
-              allow: [
-                PermissionsBitField.Flags.Connect,
-                PermissionsBitField.Flags.Speak,
-                PermissionsBitField.Flags.ManageChannels,
-                PermissionsBitField.Flags.MoveMembers,
-                PermissionsBitField.Flags.MuteMembers
-              ]
-            }
-          ]
-        });
+        const permissionOverwrites = [
+          {
+            id: member.id,
+            allow: [
+              PermissionsBitField.Flags.Connect,
+              PermissionsBitField.Flags.Speak,
+              PermissionsBitField.Flags.ManageChannels,
+              PermissionsBitField.Flags.MoveMembers,
+              PermissionsBitField.Flags.MuteMembers
+            ]
+          }
+        ];
+
+        let tempChannel;
+        try {
+          tempChannel = await guild.channels.create({
+            name: channelName,
+            type: ChannelType.GuildVoice,
+            parent: parentCategory ? parentCategory.id : null,
+            userLimit: config.tempVoice.defaultUserLimit || 0,
+            permissionOverwrites
+          });
+        } catch (e) {
+          tempChannel = await guild.channels.create({
+            name: channelName,
+            type: ChannelType.GuildVoice,
+            userLimit: config.tempVoice.defaultUserLimit || 0,
+            permissionOverwrites
+          });
+        }
 
         // Move the member into the new temp channel
         await member.voice.setChannel(tempChannel);

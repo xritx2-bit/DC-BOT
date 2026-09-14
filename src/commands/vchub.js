@@ -18,8 +18,9 @@ module.exports = {
       const categoryName = config.tempVoice.categoryName || 'VOICE CHANNELS';
       const hubName = config.tempVoice.hubChannelName || '➕ Join to Create VC';
 
-      let category = guild.channels.cache.find(
-        c => c.type === ChannelType.GuildCategory && c.name.toLowerCase() === categoryName.toLowerCase()
+      const freshChannels = await guild.channels.fetch().catch(() => guild.channels.cache);
+      let category = freshChannels.find(
+        c => c && c.type === ChannelType.GuildCategory && c.name.toLowerCase() === categoryName.toLowerCase()
       );
 
       if (!category) {
@@ -29,16 +30,30 @@ module.exports = {
         });
       }
 
-      let hubChannel = guild.channels.cache.find(
-        c => c.type === ChannelType.GuildVoice && c.parentId === category.id && c.name.toLowerCase() === hubName.toLowerCase()
-      );
-
-      if (!hubChannel) {
+      let hubChannel;
+      try {
         hubChannel = await guild.channels.create({
           name: hubName,
           type: ChannelType.GuildVoice,
           parent: category.id
         });
+      } catch (err) {
+        if (err.message && (err.message.includes('CHANNEL_PARENT_INVALID') || err.message.includes('Category does not exist'))) {
+          category = await guild.channels.create({
+            name: categoryName,
+            type: ChannelType.GuildCategory
+          });
+          hubChannel = await guild.channels.create({
+            name: hubName,
+            type: ChannelType.GuildVoice,
+            parent: category.id
+          });
+        } else {
+          hubChannel = await guild.channels.create({
+            name: hubName,
+            type: ChannelType.GuildVoice
+          });
+        }
       }
 
       await message.reply({
