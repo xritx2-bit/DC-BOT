@@ -91,6 +91,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const pass = authPassword.value.trim();
     if (authRelayInput && authRelayInput.value.trim()) {
       localStorage.setItem('abyss_relay_url', authRelayInput.value.trim());
+    } else {
+      localStorage.removeItem('abyss_relay_url');
     }
 
     try {
