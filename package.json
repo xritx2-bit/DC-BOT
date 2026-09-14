@@ -1,0 +1,28 @@
+{
+  "name": "cyber-engine-bot",
+  "version": "1.0.0",
+  "description": "Futuristic Discord Support, Moderation & Utility Bot with Cyber-Deck Web Console",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node src/index.js"
+  },
+  "keywords": [
+    "discord-bot",
+    "futuristic",
+    "console",
+    "tickets",
+    "modmail",
+    "voice-channels"
+  ],
+  "author": "Antigravity",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "discord.js": "^14.15.3",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  }
+}

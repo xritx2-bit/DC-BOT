@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CYBER-DECK // Command Console</title>
+  <!-- Google Fonts: Orbitron, Rajdhani, JetBrains Mono, Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;700&family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <!-- Socket.IO Client -->
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body class="cyber-theme">
+  <!-- Background scanlines & grid ambient effects -->
+  <div class="cyber-grid-overlay"></div>
+  <div class="scanlines"></div>
+  <div class="glow-orb red-orb"></div>
+  <div class="glow-orb cyan-orb"></div>
+
+  <!-- AUTH MODAL (Passcode Protected) -->
+  <div id="auth-modal" class="modal-backdrop">
+    <div class="modal-card cyber-border">
+      <div class="modal-header">
+        <div class="hud-tag">SECURITY CLEARANCE // PROTOCOL 9</div>
+        <h2 class="cyber-title">ENTER OPERATOR PASSCODE</h2>
+      </div>
+      <p class="modal-desc">Access to the Cyber-Deck Command Console is restricted to authorized operators.</p>
+      <form id="auth-form" class="cyber-form">
+        <div class="input-group">
+          <span class="input-prefix">KEY &gt;</span>
+          <input type="password" id="auth-password" placeholder="Passcode (Default: cyber_admin_2026)" autocomplete="off" required>
+        </div>
+        <div id="auth-error" class="error-msg"></div>
+        <button type="submit" id="auth-submit-btn" class="cyber-btn primary">
+          <span>AUTHENTICATE &amp; ENGAGE</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div class="console-layout">
+    <!-- TOP HUD NAVIGATION -->
+    <header class="cyber-header cyber-panel">
+      <div class="brand-zone">
+        <div class="status-pip pulse-red" id="bot-status-pip"></div>
+        <div class="brand-titles">
+          <div class="system-id">DEFCON-1 // CYBER PROTOCOL</div>
+          <h1 class="brand-logo" id="brand-logo-title">CYBER ENGINE <span class="badge-v">v2.6 HUD</span></h1>
+        </div>
+      </div>
+
+      <!-- Telemetry Quick Pills -->
+      <div class="header-telemetry">
+        <div class="hud-pill" id="telemetry-ws">
+          <span class="pill-label">RELAY:</span>
+          <span class="pill-val" id="ws-latency-val">Connecting...</span>
+        </div>
+        <div class="hud-pill" id="telemetry-uptime">
+          <span class="pill-label">UPTIME:</span>
+          <span class="pill-val" id="uptime-val">00:00:00</span>
+        </div>
+        <div class="hud-pill" id="telemetry-bot">
+          <span class="pill-label">ENGINE:</span>
+          <span class="pill-val status-text" id="bot-online-val">OFFLINE</span>
+        </div>
+      </div>
+
+      <!-- Control buttons -->
+      <div class="header-actions">
+        <button id="sfx-toggle-btn" class="icon-btn" title="Toggle Cyber Audio FX">
+          <span id="sfx-icon">🔊</span>
+        </button>
+        <button id="restart-bot-btn" class="cyber-btn danger-outline" title="Reboot Discord Engine">
+          <span>REBOOT BOT</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- NAVIGATION TABS -->
+    <nav class="hud-tabs">
+      <button class="hud-tab active" data-tab="tab-terminal">
+        <span class="tab-index">01</span> LIVE TERMINAL
+      </button>
+      <button class="hud-tab" data-tab="tab-telemetry">
+        <span class="tab-index">02</span> TELEMETRY MATRIX
+      </button>
+      <button class="hud-tab" data-tab="tab-embeds">
+        <span class="tab-index">03</span> EMBED DISPATCH
+      </button>
+      <button class="hud-tab" data-tab="tab-support">
+        <span class="tab-index">04</span> TICKETS &amp; MODMAIL
+        <span class="counter-badge" id="tab-ticket-badge">0</span>
+      </button>
+      <button class="hud-tab" data-tab="tab-presence">
+        <span class="tab-index">05</span> BOT PRESENCE
+      </button>
+      <button class="hud-tab" data-tab="tab-config">
+        <span class="tab-index">06</span> CREDENTIALS VAULT
+      </button>
+    </nav>
+
+    <!-- MAIN INTERFACE VIEWPORT -->
+    <main class="hud-viewport">
+
+      <!-- ================= TAB 1: LIVE TERMINAL ================= -->
+      <section id="tab-terminal" class="tab-view active">
+        <!-- Telemetry Summary Cards Bar -->
+        <div class="telemetry-bar">
+          <div class="tele-card cyber-panel">
+            <div class="tc-header">
+              <span class="tc-title">GATEWAY PING</span>
+              <span class="tc-icon">📡</span>
+            </div>
+            <div class="tc-value" id="card-ping">-- ms</div>
+            <div class="tc-sub" id="card-ping-sub">WebSocket Live Link</div>
+          </div>
+
+          <div class="tele-card cyber-panel">
+            <div class="tc-header">
+              <span class="tc-title">RAM ALLOCATION</span>
+              <span class="tc-icon">💾</span>
+            </div>
+            <div class="tc-value" id="card-ram">-- MB</div>
+            <div class="progress-track"><div class="progress-fill" id="ram-progress-bar"></div></div>
+          </div>
+
+          <div class="tele-card cyber-panel">
+            <div class="tc-header">
+              <span class="tc-title">ACTIVE TICKETS</span>
+              <span class="tc-icon">🎫</span>
+            </div>
+            <div class="tc-value" id="card-tickets">0</div>
+            <div class="tc-sub">Open Support Channels</div>
+          </div>
+
+          <div class="tele-card cyber-panel">
+            <div class="tc-header">
+              <span class="tc-title">DYNAMIC VCS</span>
+              <span class="tc-icon">🔊</span>
+            </div>
+            <div class="tc-value" id="card-vcs">0</div>
+            <div class="tc-sub">Active Temp Lounges</div>
+          </div>
+        </div>
+
+        <!-- Terminal Screen Component -->
+        <div class="terminal-container cyber-panel">
+          <div class="term-header">
+            <div class="term-title-group">
+              <span class="blinking-cursor">■</span>
+              <span class="term-title">CYBER-DECK KERNEL LOG STREAM</span>
+            </div>
+            <div class="term-filter-tabs">
+              <button class="filter-btn active" data-filter="ALL">ALL</button>
+              <button class="filter-btn" data-filter="DISCORD">DISCORD</button>
+              <button class="filter-btn" data-filter="TICKETS">TICKETS</button>
+              <button class="filter-btn" data-filter="MODMAIL">MODMAIL</button>
+              <button class="filter-btn" data-filter="VC">VC</button>
+              <button class="filter-btn" data-filter="SYSTEM">SYSTEM</button>
+              <button class="filter-btn" data-filter="ERROR">ERROR</button>
+            </div>
+            <div class="term-actions">
+              <button id="clear-term-btn" class="term-tool-btn" title="Clear Buffer">CLEAR</button>
+              <button id="autoscroll-toggle-btn" class="term-tool-btn active" title="Autoscroll">AUTO-SCROLL</button>
+            </div>
+          </div>
+
+          <!-- Log Output Area -->
+          <div id="terminal-screen" class="terminal-screen">
+            <div class="log-line system">
+              <span class="log-time">[00:00:00]</span>
+              <span class="log-tag [SYSTEM]">[SYSTEM]</span>
+              <span class="log-msg">Cyber-Deck Command Console initialized.</span>
+            </div>
+          </div>
+
+          <!-- Interactive Terminal Prompt -->
+          <form id="terminal-prompt-form" class="term-input-bar">
+            <span class="term-ps1">bot-engine@grid:~$</span>
+            <input type="text" id="term-input" placeholder="Type a command (e.g. 'help', 'status online', 'ping', 'say <chanId> <text>')..." autocomplete="off">
+            <button type="submit" id="term-send-btn" class="cyber-btn small">EXECUTE</button>
+          </form>
+
+          <!-- Quick Command Macro Buttons -->
+          <div class="term-macros">
+            <span class="macro-label">MACROS:</span>
+            <button class="macro-btn" data-cmd="help">help</button>
+            <button class="macro-btn" data-cmd="ping">ping</button>
+            <button class="macro-btn" data-cmd="tickets">tickets</button>
+            <button class="macro-btn" data-cmd="modmail">modmail</button>
+            <button class="macro-btn" data-cmd="status online ?help | NEXUS ENGINE">set status: online</button>
+            <button class="macro-btn" data-cmd="status dnd ⚠️ System Maintenance">set status: dnd</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= TAB 2: TELEMETRY MATRIX ================= -->
+      <section id="tab-telemetry" class="tab-view">
+        <div class="matrix-grid">
+          <div class="matrix-card cyber-panel">
+            <h3 class="panel-heading">⚡ BOT IDENTITY &amp; CORE</h3>
+            <div class="identity-box">
+              <div class="avatar-holder">
+                <img id="matrix-bot-avatar" src="https://cdn.discordapp.com/embed/avatars/0.png" alt="Bot Avatar">
+              </div>
+              <div class="id-details">
+                <div class="id-name" id="matrix-bot-tag">Loading Engine...</div>
+                <div class="id-status-pill" id="matrix-status-pill">STATUS: SYNCING</div>
+                <p class="id-quote">"Next-Gen Autonomous Support &amp; Server Operations"</p>
+              </div>
+            </div>
+            <div class="telemetry-list">
+              <div class="tele-row"><span>Node.js Environment:</span><strong>v24.19.0 LTS</strong></div>
+              <div class="tele-row"><span>Library:</span><strong>Discord.js v14</strong></div>
+              <div class="tele-row"><span>Process ID:</span><strong id="matrix-pid">Node Main</strong></div>
+              <div class="tele-row"><span>Host Architecture:</span><strong>Windows x64</strong></div>
+            </div>
+          </div>
+
+          <div class="matrix-card cyber-panel">
+            <h3 class="panel-heading">🛡️ SERVERS &amp; MEMBERS IN GRID</h3>
+            <div class="stats-counter-group">
+              <div class="big-counter">
+                <span class="count-num" id="matrix-guilds-count">0</span>
+                <span class="count-desc">CONNECTED GUILDS</span>
+              </div>
+              <div class="big-counter">
+                <span class="count-num" id="matrix-members-count">0</span>
+                <span class="count-desc">TOTAL MEMBERS MONITORED</span>
+              </div>
+            </div>
+            <div class="guilds-preview-list" id="guilds-preview-list">
+              <div class="empty-state">No Discord servers registered yet. Invite the bot to your server!</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= TAB 3: EMBED DISPATCH ================= -->
+      <section id="tab-embeds" class="tab-view">
+        <div class="embed-studio-layout">
+          <!-- Embed Builder Form -->
+          <div class="embed-form-card cyber-panel">
+            <h3 class="panel-heading">⚡ DISPATCH EMBED BROADCASTER</h3>
+            <p class="sub-info">Craft high-impact futuristic announcements and broadcast directly to any channel.</p>
+
+            <form id="embed-dispatch-form" class="cyber-form">
+              <div class="form-group">
+                <label for="embed-channel-select">TARGET SECTOR / CHANNEL</label>
+                <select id="embed-channel-select" required>
+                  <option value="">-- Select Channel --</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="embed-title">EMBED TITLE</label>
+                <input type="text" id="embed-title" placeholder="⚡ TRANSMISSION" value="⚡ COMMUNITY ANNOUNCEMENT">
+              </div>
+
+              <div class="form-group">
+                <label for="embed-color">ACCENT COLOR</label>
+                <div class="color-picker-row">
+                  <input type="color" id="embed-color" value="#FF1E27">
+                  <button type="button" class="color-swatch red" data-color="#FF1E27">Crimson</button>
+                  <button type="button" class="color-swatch cyan" data-color="#00F3FF">Cyber Cyan</button>
+                  <button type="button" class="color-swatch purple" data-color="#9D4EDD">Neon Purple</button>
+                  <button type="button" class="color-swatch gold" data-color="#FFB800">Warning Amber</button>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="embed-desc">TRANSMISSION BODY (Markdown)</label>
+                <textarea id="embed-desc" rows="5" placeholder="Enter message payload...">Important server announcement and maintenance directives are now in effect.</textarea>
+              </div>
+
+              <div class="form-group">
+                <label for="embed-image">BANNER IMAGE URL (Optional)</label>
+                <input type="url" id="embed-image" placeholder="https://images.unsplash.com/photo-...">
+              </div>
+
+              <div class="form-group">
+                <label for="embed-footer">FOOTER TEXT</label>
+                <input type="text" id="embed-footer" value="Autonomous Support Protocol">
+              </div>
+
+              <button type="submit" id="embed-dispatch-btn" class="cyber-btn primary full-width">
+                <span>⚡ BROADCAST TO GRID</span>
+              </button>
+              <div id="embed-dispatch-status" class="status-msg"></div>
+            </form>
+          </div>
+
+          <!-- Live Preview Screen -->
+          <div class="embed-preview-card cyber-panel">
+            <h3 class="panel-heading">LIVE DISCORD PREVIEW</h3>
+            <div class="discord-preview-container">
+              <div class="discord-bot-header">
+                <img id="preview-avatar" src="https://cdn.discordapp.com/embed/avatars/0.png" alt="Bot">
+                <span class="preview-bot-name" id="preview-bot-name">NEXUS ENGINE</span>
+                <span class="preview-bot-badge">APP</span>
+                <span class="preview-timestamp">Today at 12:00 AM</span>
+              </div>
+              <div class="discord-embed-card" id="live-embed-card">
+                <div class="embed-color-bar" id="preview-color-bar"></div>
+                <div class="embed-content">
+                  <h4 class="embed-title" id="preview-title">⚡ COMMUNITY ANNOUNCEMENT</h4>
+                  <div class="embed-desc" id="preview-desc">Important server announcement and maintenance directives are now in effect.</div>
+                  <img id="preview-img" class="embed-preview-image" style="display:none;" alt="Preview image">
+                  <div class="embed-footer-row">
+                    <span id="preview-footer">Autonomous Support Protocol</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= TAB 4: TICKETS & MODMAIL ================= -->
+      <section id="tab-support" class="tab-view">
+        <div class="support-grid">
+          <!-- Active Tickets Deck -->
+          <div class="support-panel cyber-panel">
+            <div class="sp-header">
+              <h3 class="panel-heading">🎫 ACTIVE SUPPORT SESSIONS</h3>
+              <span class="count-tag" id="support-ticket-count">0 TICKETS</span>
+            </div>
+            <div class="tickets-list" id="tickets-list-container">
+              <div class="empty-state">No open support tickets at this time.</div>
+            </div>
+          </div>
+
+          <!-- Modmail Direct Message Hub -->
+          <div class="support-panel cyber-panel">
+            <div class="sp-header">
+              <h3 class="panel-heading">📩 MODMAIL DIRECT SUPPORT</h3>
+              <span class="count-tag" id="support-modmail-count">0 THREADS</span>
+            </div>
+            <div class="modmail-sessions-list" id="modmail-list-container">
+              <div class="empty-state">No active DM modmail threads. When a member DMs the bot, they will appear here!</div>
+            </div>
+
+            <!-- Modmail Quick Response Box -->
+            <div class="modmail-reply-box">
+              <h4 class="sub-heading">DISPATCH DIRECT REPLY</h4>
+              <form id="modmail-reply-form" class="cyber-form">
+                <div class="form-group">
+                  <label for="modmail-user-id">TARGET USER ID</label>
+                  <input type="text" id="modmail-user-id" placeholder="Discord User ID" required>
+                </div>
+                <div class="form-group">
+                  <label for="modmail-reply-text">REPLY MESSAGE</label>
+                  <textarea id="modmail-reply-text" rows="3" placeholder="Type direct response to user..." required></textarea>
+                </div>
+                <button type="submit" class="cyber-btn primary">
+                  <span>SEND DM TRANSMISSION</span>
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= TAB 5: BOT PRESENCE ================= -->
+      <section id="tab-presence" class="tab-view">
+        <div class="presence-container cyber-panel">
+          <h3 class="panel-heading">⚡ REAL-TIME BOT PRESENCE CONTROLLER</h3>
+          <p class="sub-info">Synchronize the bot's Discord activity, status icon, and custom game text without rebooting.</p>
+
+          <form id="presence-form" class="cyber-form matrix-form">
+            <div class="form-group">
+              <label>CLIENT STATUS INDICATOR</label>
+              <div class="status-selector-row">
+                <label class="radio-card online">
+                  <input type="radio" name="presence_status" value="online" checked>
+                  <span class="dot"></span>
+                  <span class="status-name">Online</span>
+                </label>
+                <label class="radio-card idle">
+                  <input type="radio" name="presence_status" value="idle">
+                  <span class="dot"></span>
+                  <span class="status-name">Idle / Away</span>
+                </label>
+                <label class="radio-card dnd">
+                  <input type="radio" name="presence_status" value="dnd">
+                  <span class="dot"></span>
+                  <span class="status-name">Do Not Disturb</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="activity-type">ACTIVITY DIRECTIVE</label>
+              <select id="activity-type">
+                <option value="PLAYING" selected>Playing</option>
+                <option value="STREAMING">Streaming</option>
+                <option value="LISTENING">Listening to</option>
+                <option value="WATCHING">Watching</option>
+                <option value="COMPETING">Competing in</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="activity-text">ACTIVITY TEXT PAYLOAD</label>
+              <input type="text" id="activity-text" placeholder="e.g. ?help | NEXUS ENGINE" value="?help | NEXUS ENGINE">
+            </div>
+
+            <button type="submit" id="save-presence-btn" class="cyber-btn primary">
+              <span>SYNCHRONIZE PRESENCE TO DISCORD</span>
+            </button>
+            <div id="presence-status-msg" class="status-msg"></div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ================= TAB 6: CREDENTIALS VAULT ================= -->
+      <section id="tab-config" class="tab-view">
+        <div class="config-container cyber-panel">
+          <h3 class="panel-heading">🔒 DISCORD CREDENTIALS VAULT</h3>
+          <p class="sub-info">Configure your Discord Bot Token and Application ID. These credentials are saved securely in your project's <code>.env</code> file.</p>
+
+          <div class="instructions-banner">
+            <strong>How to obtain credentials:</strong>
+            <ol>
+              <li>Go to <a href="https://discord.com/developers/applications" target="_blank" rel="noreferrer">Discord Developer Portal</a>.</li>
+              <li>Select or create your application.</li>
+              <li>Under <strong>Bot</strong> tab, click <strong>Reset Token</strong> to copy your Bot Token.</li>
+              <li>Enable the 3 <strong>Privileged Gateway Intents</strong>: <em>Presence Intent</em>, <em>Server Members Intent</em>, <em>Message Content Intent</em> (as shown in your screenshot).</li>
+              <li>Paste below and click <strong>Save &amp; Reboot Engine</strong>.</li>
+            </ol>
+          </div>
+
+          <form id="vault-form" class="cyber-form">
+            <div class="form-group">
+              <label for="vault-token">DISCORD BOT TOKEN</label>
+              <input type="password" id="vault-token" placeholder="Paste your bot token here..." required>
+            </div>
+
+            <div class="form-group">
+              <label for="vault-client-id">APPLICATION (CLIENT) ID</label>
+              <input type="text" id="vault-client-id" placeholder="Paste Application ID (e.g. 123456789...)">
+            </div>
+
+            <button type="submit" id="vault-submit-btn" class="cyber-btn primary">
+              <span>SAVE CREDENTIALS &amp; ENGAGE BOT</span>
+            </button>
+            <div id="vault-status-msg" class="status-msg"></div>
+          </form>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- FOOTER HUD BAR -->
+    <footer class="cyber-footer cyber-panel">
+      <div class="footer-left">
+        <span class="hud-status-light"></span>
+        <span>CYBER-DECK COMMAND // PROTOCOL ACTIVE</span>
+      </div>
+      <div class="footer-right">
+        <span>SECURITY: ENCRYPTED</span>
+        <span>HOST: LOCALHOST</span>
+      </div>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

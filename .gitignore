@@ -1,0 +1,30 @@
+# =========================================================
+#  GITIGNORE - NEXUS CYBER ENGINE BOT & CONSOLE
+# =========================================================
+
+# Dependencies
+node_modules/
+
+# Secrets & Environment Variables (NEVER COMMIT!)
+.env
+.env.local
+.env.*.local
+
+# System & OS Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs & Transcripts
+*.log
+logs/
+npm-debug.log*
+
+# IDE & Editor Config
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

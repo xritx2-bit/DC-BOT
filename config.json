@@ -1,0 +1,58 @@
+{
+  "bot": {
+    "name": "NEXUS ENGINE",
+    "tagline": "Next-Gen Autonomous Support & Server Operations",
+    "prefix": "?",
+    "statusText": "?help | NEXUS ENGINE",
+    "statusType": "PLAYING",
+    "presence": "online",
+    "themeColor": "#FF1E27",
+    "accentColor": "#00F3FF",
+    "darkColor": "#0A0B0E"
+  },
+  "roles": {
+    "adminRoles": ["Admin", "Administrator", "Owner"],
+    "staffRoles": ["Staff", "Moderator", "Support Team"],
+    "autoRoleId": ""
+  },
+  "tickets": {
+    "categoryName": "SUPPORT TICKETS",
+    "transcriptLogChannelId": "",
+    "maxOpenPerUser": 2,
+    "categories": [
+      {
+        "id": "general",
+        "label": "General Support",
+        "description": "General queries and community assistance",
+        "emoji": "🎫"
+      },
+      {
+        "id": "technical",
+        "label": "Technical / Bot Help",
+        "description": "Assistance with engine commands or issues",
+        "emoji": "⚡"
+      },
+      {
+        "id": "report",
+        "label": "Report / Moderation",
+        "description": "Report a member or server incident",
+        "emoji": "🛡️"
+      }
+    ]
+  },
+  "modmail": {
+    "enabled": true,
+    "categoryName": "DIRECT SUPPORT / MODMAIL",
+    "logChannelId": ""
+  },
+  "tempVoice": {
+    "enabled": true,
+    "hubChannelName": "➕ Join to Create VC",
+    "categoryName": "VOICE CHANNELS",
+    "defaultUserLimit": 0
+  },
+  "console": {
+    "port": 3000,
+    "host": "localhost"
+  }
+}
