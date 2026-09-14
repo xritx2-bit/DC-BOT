@@ -66,6 +66,13 @@ async function handleTicketButton(interaction) {
       label: categoryKey.toUpperCase()
     };
 
+    // Prune any stale tickets whose channels were deleted in Discord
+    for (const [chId] of activeTickets) {
+      if (!guild.channels.cache.has(chId)) {
+        activeTickets.delete(chId);
+      }
+    }
+
     // Check open ticket limit
     const existing = Array.from(activeTickets.values()).filter(t => t.userId === user.id && t.guildId === guild.id);
     if (existing.length >= (config.tickets.maxOpenPerUser || 2)) {
@@ -88,22 +95,24 @@ async function handleTicketButton(interaction) {
         category = await guild.channels.create({
           name: config.tickets.categoryName,
           type: ChannelType.GuildCategory
-        });
+        }).catch(() => null);
       }
 
-      // If category has @everyone denied ViewChannel, remove the deny so members can see their tickets
-      const everyoneOverwrite = category.permissionOverwrites.cache.get(guild.roles.everyone.id);
-      if (everyoneOverwrite && everyoneOverwrite.deny.has(PermissionsBitField.Flags.ViewChannel)) {
-        await category.permissionOverwrites.edit(guild.roles.everyone.id, {
-          ViewChannel: null
+      if (category) {
+        // If category has @everyone denied ViewChannel, remove the deny so members can see their tickets
+        const everyoneOverwrite = category.permissionOverwrites?.cache?.get(guild.roles.everyone.id);
+        if (everyoneOverwrite && everyoneOverwrite.deny.has(PermissionsBitField.Flags.ViewChannel)) {
+          await category.permissionOverwrites.edit(guild.roles.everyone.id, {
+            ViewChannel: null
+          }).catch(() => {});
+        }
+
+        // Explicitly allow the user to view the category header
+        await category.permissionOverwrites.edit(user.id, {
+          ViewChannel: true,
+          ReadMessageHistory: true
         }).catch(() => {});
       }
-
-      // Explicitly allow the user to view the category header
-      await category.permissionOverwrites.edit(user.id, {
-        ViewChannel: true,
-        ReadMessageHistory: true
-      }).catch(() => {});
 
       // Prepare permission overwrites for the ticket channel
       const permissionOverwrites = [
@@ -160,13 +169,14 @@ async function handleTicketButton(interaction) {
         ticketChannel = await guild.channels.create({
           name: channelName,
           type: ChannelType.GuildText,
-          parent: category.id,
+          parent: category ? category.id : null,
           topic: `Ticket by ${user.tag} (${user.id}) | Category: ${categoryConfig.label}`,
           permissionOverwrites
         });
       } catch (createErr) {
-        if (createErr.message && (createErr.message.includes('CHANNEL_PARENT_INVALID') || createErr.message.includes('Category does not exist'))) {
-          // Stale category detected - create fresh category and retry
+        logger.warn(`Initial ticket channel creation with parent failed: ${createErr.message}. Attempting resilient fallback...`);
+        try {
+          // Re-create fresh category and try placing inside
           category = await guild.channels.create({
             name: config.tickets.categoryName,
             type: ChannelType.GuildCategory
@@ -178,8 +188,9 @@ async function handleTicketButton(interaction) {
             topic: `Ticket by ${user.tag} (${user.id}) | Category: ${categoryConfig.label}`,
             permissionOverwrites
           });
-        } else {
-          // Fallback without parent
+        } catch (retryErr) {
+          logger.warn(`Parent category assignment failed (${retryErr.message}). Creating standalone ticket channel.`);
+          // Direct fallback without parent - guaranteed to succeed
           ticketChannel = await guild.channels.create({
             name: channelName,
             type: ChannelType.GuildText,
@@ -324,7 +335,52 @@ async function generateTranscript(channel) {
   return new AttachmentBuilder(buffer, { name: `transcript-${channel.name}.txt` });
 }
 
-function getActiveTickets() {
+async function closeTicket(channel, closedBy = 'Cyber-Deck Console') {
+  const ticketData = activeTickets.get(channel.id);
+  activeTickets.delete(channel.id);
+
+  try {
+    const transcript = await generateTranscript(channel);
+    if (config.tickets.transcriptLogChannelId) {
+      const logChan = channel.guild.channels.cache.get(config.tickets.transcriptLogChannelId);
+      if (logChan) {
+        await logChan.send({
+          content: `📑 **Ticket Transcript:** #${channel.name} (Closed by: ${closedBy})`,
+          files: [transcript]
+        });
+      }
+    }
+  } catch (e) {
+    logger.error(`Error saving transcript: ${e.message}`);
+  }
+
+  try {
+    await channel.delete(`Ticket closed by ${closedBy}`);
+    logger.ticket(`Ticket #${channel.name} channel deleted.`);
+  } catch (e) {
+    logger.error(`Error deleting closed ticket channel: ${e.message}`);
+  }
+}
+
+function handleChannelDelete(channel) {
+  if (activeTickets.has(channel.id)) {
+    activeTickets.delete(channel.id);
+    logger.ticket(`Ticket channel #${channel.name} was removed. Cleaned active session.`);
+  }
+}
+
+function removeActiveTicket(channelId) {
+  activeTickets.delete(channelId);
+}
+
+function getActiveTickets(client) {
+  if (client && client.channels && client.channels.cache) {
+    for (const [chId] of activeTickets) {
+      if (!client.channels.cache.has(chId)) {
+        activeTickets.delete(chId);
+      }
+    }
+  }
   return Array.from(activeTickets.values());
 }
 
@@ -333,5 +389,8 @@ module.exports = {
   getTicketControlButtons,
   handleTicketButton,
   getActiveTickets,
-  generateTranscript
+  generateTranscript,
+  closeTicket,
+  handleChannelDelete,
+  removeActiveTicket
 };

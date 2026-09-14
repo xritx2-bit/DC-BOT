@@ -328,8 +328,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.closeTicketDirect = function(channelId) {
     playCyberClick();
-    if (socket) {
-      socket.emit('execute_command', { command: `say ${channelId} 🔒 *Ticket finalized via Cyber-Deck Command Console.*` });
+    if (confirm('Close and delete this support ticket channel on Discord?')) {
+      if (socket) {
+        socket.emit('close_ticket', { channelId });
+      }
     }
   };
 

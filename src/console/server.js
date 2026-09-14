@@ -7,7 +7,7 @@ const fs = require('fs');
 const cors = require('cors');
 const logger = require('../utils/logger');
 const config = require('../../config.json');
-const { getActiveTickets } = require('../handlers/ticketHandler');
+const { getActiveTickets, closeTicket, removeActiveTicket } = require('../handlers/ticketHandler');
 const { getActiveSessions, sendDirectReplyFromConsole } = require('../handlers/modmailHandler');
 const { getActiveTempVcs } = require('../handlers/tempVcHandler');
 const { EmbedBuilder } = require('discord.js');
@@ -285,6 +285,28 @@ function startConsoleServer(client, botManager) {
         socket.emit('modmail_reply_status', { success: false, error: err.message });
       }
     });
+
+    // Close Support Ticket from Cyber-Deck UI
+    socket.on('close_ticket', async data => {
+      const { channelId } = data;
+      if (!channelId || !client || !client.isReady()) return;
+      try {
+        const chan = client.channels.cache.get(channelId);
+        if (chan) {
+          await closeTicket(chan, 'Cyber-Deck Console');
+          io.emit('new_log', {
+            type: 'TICKET',
+            message: `Ticket #${chan.name} finalized and closed via Cyber-Deck Console`,
+            timestamp: new Date().toTimeString().split(' ')[0]
+          });
+        } else {
+          removeActiveTicket(channelId);
+        }
+        sendTelemetry(io, client);
+      } catch (err) {
+        logger.error(`Failed to close ticket from console: ${err.message}`);
+      }
+    });
   });
 
   // Listen to logger events and stream to connected WebSocket clients
@@ -319,8 +341,8 @@ function sendTelemetry(target, client) {
     ping: clientReady ? (client.ws.ping >= 0 ? client.ws.ping : 0) : 0,
     guildsCount: clientReady ? client.guilds.cache.size : 0,
     membersCount: clientReady ? client.guilds.cache.reduce((acc, g) => acc + g.memberCount, 0) : 0,
-    activeTickets: getActiveTickets(),
-    activeModmail: getActiveSessions(),
+    activeTickets: getActiveTickets(client),
+    activeModmail: getActiveSessions(client),
     activeTempVcs: getActiveTempVcs()
   };
 

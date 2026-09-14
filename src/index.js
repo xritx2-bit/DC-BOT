@@ -8,8 +8,8 @@ const {
 const config = require('../config.json');
 const logger = require('./utils/logger');
 const { handleCommand } = require('./commands');
-const { handleTicketButton } = require('./handlers/ticketHandler');
-const { handleDirectMessage, handleStaffReply } = require('./handlers/modmailHandler');
+const { handleTicketButton, handleChannelDelete } = require('./handlers/ticketHandler');
+const { handleDirectMessage, handleStaffReply, handleModmailChannelDelete } = require('./handlers/modmailHandler');
 const { handleVoiceStateUpdate } = require('./handlers/tempVcHandler');
 const { startConsoleServer } = require('./console/server');
 
@@ -111,6 +111,12 @@ class BotManager {
     // Voice State Update Event (Dynamic Temporary Voice Channels)
     client.on('voiceStateUpdate', async (oldState, newState) => {
       await handleVoiceStateUpdate(oldState, newState);
+    });
+
+    // Channel Delete Event (Cleanup tickets and modmail sessions if deleted in Discord)
+    client.on('channelDelete', channel => {
+      handleChannelDelete(channel);
+      handleModmailChannelDelete(channel);
     });
 
     // Error logging

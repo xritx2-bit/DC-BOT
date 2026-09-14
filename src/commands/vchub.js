@@ -35,10 +35,10 @@ module.exports = {
         hubChannel = await guild.channels.create({
           name: hubName,
           type: ChannelType.GuildVoice,
-          parent: category.id
+          parent: category ? category.id : null
         });
       } catch (err) {
-        if (err.message && (err.message.includes('CHANNEL_PARENT_INVALID') || err.message.includes('Category does not exist'))) {
+        try {
           category = await guild.channels.create({
             name: categoryName,
             type: ChannelType.GuildCategory
@@ -48,7 +48,7 @@ module.exports = {
             type: ChannelType.GuildVoice,
             parent: category.id
           });
-        } else {
+        } catch (retryErr) {
           hubChannel = await guild.channels.create({
             name: hubName,
             type: ChannelType.GuildVoice

@@ -93,12 +93,13 @@ async function handleDirectMessage(client, message) {
         channel = await guild.channels.create({
           name: channelName,
           type: ChannelType.GuildText,
-          parent: category.id,
+          parent: category ? category.id : null,
           topic: `Direct Support Session for ${user.tag} (ID: ${user.id})`,
           permissionOverwrites
         });
       } catch (err) {
-        if (err.message && (err.message.includes('CHANNEL_PARENT_INVALID') || err.message.includes('Category does not exist'))) {
+        logger.warn(`Initial modmail channel creation with parent failed: ${err.message}. Retrying...`);
+        try {
           category = await guild.channels.create({
             name: config.modmail.categoryName,
             type: ChannelType.GuildCategory
@@ -110,7 +111,8 @@ async function handleDirectMessage(client, message) {
             topic: `Direct Support Session for ${user.tag} (ID: ${user.id})`,
             permissionOverwrites
           });
-        } else {
+        } catch (retryErr) {
+          logger.warn(`Modmail category creation failed (${retryErr.message}). Creating standalone modmail channel.`);
           channel = await guild.channels.create({
             name: channelName,
             type: ChannelType.GuildText,
@@ -242,7 +244,24 @@ async function sendDirectReplyFromConsole(client, userId, messageText, staffName
   return true;
 }
 
-function getActiveSessions() {
+function handleModmailChannelDelete(channel) {
+  const userId = channelToUser.get(channel.id);
+  if (userId) {
+    activeSessions.delete(userId);
+    channelToUser.delete(channel.id);
+    logger.modmail(`Modmail channel #${channel.name} was removed. Cleaned active session.`);
+  }
+}
+
+function getActiveSessions(client) {
+  if (client && client.channels && client.channels.cache) {
+    for (const [userId, session] of activeSessions) {
+      if (!client.channels.cache.has(session.channelId)) {
+        channelToUser.delete(session.channelId);
+        activeSessions.delete(userId);
+      }
+    }
+  }
   return Array.from(activeSessions.values());
 }
 
@@ -251,5 +270,6 @@ module.exports = {
   handleStaffReply,
   sendDirectReplyFromConsole,
   getActiveSessions,
+  handleModmailChannelDelete,
   channelToUser
 };
