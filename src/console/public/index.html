@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CYBER-DECK // Command Console</title>
+  <title>ABYSS // Cyber-Deck Command Console</title>
   <!-- Google Fonts: Orbitron, Rajdhani, JetBrains Mono, Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -26,7 +26,7 @@
         <div class="hud-tag">SECURITY CLEARANCE // PROTOCOL 9</div>
         <h2 class="cyber-title">ENTER OPERATOR PASSCODE</h2>
       </div>
-      <p class="modal-desc">Access to the Cyber-Deck Command Console is restricted to authorized operators.</p>
+      <p class="modal-desc">Access to the ABYSS Cyber-Deck Command Console is restricted to authorized operators.</p>
       <form id="auth-form" class="cyber-form">
         <div class="input-group">
           <span class="input-prefix">KEY &gt;</span>
@@ -46,8 +46,8 @@
       <div class="brand-zone">
         <div class="status-pip pulse-red" id="bot-status-pip"></div>
         <div class="brand-titles">
-          <div class="system-id">DEFCON-1 // CYBER PROTOCOL</div>
-          <h1 class="brand-logo" id="brand-logo-title">CYBER ENGINE <span class="badge-v">v2.6 HUD</span></h1>
+          <div class="system-id">DEFCON-1 // ABYSS PROTOCOL</div>
+          <h1 class="brand-logo" id="brand-logo-title">ABYSS <span class="badge-v">v2.6 HUD</span></h1>
         </div>
       </div>
 
@@ -150,7 +150,7 @@
           <div class="term-header">
             <div class="term-title-group">
               <span class="blinking-cursor">■</span>
-              <span class="term-title">CYBER-DECK KERNEL LOG STREAM</span>
+              <span class="term-title">ABYSS KERNEL LOG STREAM</span>
             </div>
             <div class="term-filter-tabs">
               <button class="filter-btn active" data-filter="ALL">ALL</button>
@@ -172,13 +172,13 @@
             <div class="log-line system">
               <span class="log-time">[00:00:00]</span>
               <span class="log-tag [SYSTEM]">[SYSTEM]</span>
-              <span class="log-msg">Cyber-Deck Command Console initialized.</span>
+              <span class="log-msg">ABYSS Cyber-Deck Command Console initialized.</span>
             </div>
           </div>
 
           <!-- Interactive Terminal Prompt -->
           <form id="terminal-prompt-form" class="term-input-bar">
-            <span class="term-ps1">bot-engine@grid:~$</span>
+            <span class="term-ps1">abyss@grid:~$</span>
             <input type="text" id="term-input" placeholder="Type a command (e.g. 'help', 'status online', 'ping', 'say <chanId> <text>')..." autocomplete="off">
             <button type="submit" id="term-send-btn" class="cyber-btn small">EXECUTE</button>
           </form>
@@ -190,7 +190,7 @@
             <button class="macro-btn" data-cmd="ping">ping</button>
             <button class="macro-btn" data-cmd="tickets">tickets</button>
             <button class="macro-btn" data-cmd="modmail">modmail</button>
-            <button class="macro-btn" data-cmd="status online ?help | NEXUS ENGINE">set status: online</button>
+            <button class="macro-btn" data-cmd="status online ?help | ABYSS">set status: online</button>
             <button class="macro-btn" data-cmd="status dnd ⚠️ System Maintenance">set status: dnd</button>
           </div>
         </div>
@@ -206,9 +206,9 @@
                 <img id="matrix-bot-avatar" src="https://cdn.discordapp.com/embed/avatars/0.png" alt="Bot Avatar">
               </div>
               <div class="id-details">
-                <div class="id-name" id="matrix-bot-tag">Loading Engine...</div>
+                <div class="id-name" id="matrix-bot-tag">ABYSS</div>
                 <div class="id-status-pill" id="matrix-status-pill">STATUS: SYNCING</div>
-                <p class="id-quote">"Next-Gen Autonomous Support &amp; Server Operations"</p>
+                <p class="id-quote">"Into the dark. Full autonomous server command."</p>
               </div>
             </div>
             <div class="telemetry-list">
@@ -232,7 +232,7 @@
               </div>
             </div>
             <div class="guilds-preview-list" id="guilds-preview-list">
-              <div class="empty-state">No Discord servers registered yet. Invite the bot to your server!</div>
+              <div class="empty-state">No Discord servers registered yet. Invite ABYSS to your server!</div>
             </div>
           </div>
         </div>
@@ -256,7 +256,7 @@
 
               <div class="form-group">
                 <label for="embed-title">EMBED TITLE</label>
-                <input type="text" id="embed-title" placeholder="⚡ TRANSMISSION" value="⚡ COMMUNITY ANNOUNCEMENT">
+                <input type="text" id="embed-title" placeholder="⚡ TRANSMISSION" value="⚡ ABYSS ANNOUNCEMENT">
               </div>
 
               <div class="form-group">
@@ -272,7 +272,7 @@
 
               <div class="form-group">
                 <label for="embed-desc">TRANSMISSION BODY (Markdown)</label>
-                <textarea id="embed-desc" rows="5" placeholder="Enter message payload...">Important server announcement and maintenance directives are now in effect.</textarea>
+                <textarea id="embed-desc" rows="5" placeholder="Enter message payload...">Into the dark. Server operations and system directives are now live.</textarea>
               </div>
 
               <div class="form-group">
@@ -282,7 +282,7 @@
 
               <div class="form-group">
                 <label for="embed-footer">FOOTER TEXT</label>
-                <input type="text" id="embed-footer" value="Autonomous Support Protocol">
+                <input type="text" id="embed-footer" value="ABYSS • Autonomous Protocol">
               </div>
 
               <button type="submit" id="embed-dispatch-btn" class="cyber-btn primary full-width">
@@ -298,18 +298,18 @@
             <div class="discord-preview-container">
               <div class="discord-bot-header">
                 <img id="preview-avatar" src="https://cdn.discordapp.com/embed/avatars/0.png" alt="Bot">
-                <span class="preview-bot-name" id="preview-bot-name">NEXUS ENGINE</span>
+                <span class="preview-bot-name" id="preview-bot-name">ABYSS</span>
                 <span class="preview-bot-badge">APP</span>
                 <span class="preview-timestamp">Today at 12:00 AM</span>
               </div>
               <div class="discord-embed-card" id="live-embed-card">
                 <div class="embed-color-bar" id="preview-color-bar"></div>
                 <div class="embed-content">
-                  <h4 class="embed-title" id="preview-title">⚡ COMMUNITY ANNOUNCEMENT</h4>
-                  <div class="embed-desc" id="preview-desc">Important server announcement and maintenance directives are now in effect.</div>
+                  <h4 class="embed-title" id="preview-title">⚡ ABYSS ANNOUNCEMENT</h4>
+                  <div class="embed-desc" id="preview-desc">Into the dark. Server operations and system directives are now live.</div>
                   <img id="preview-img" class="embed-preview-image" style="display:none;" alt="Preview image">
                   <div class="embed-footer-row">
-                    <span id="preview-footer">Autonomous Support Protocol</span>
+                    <span id="preview-footer">ABYSS • Autonomous Protocol</span>
                   </div>
                 </div>
               </div>
@@ -339,7 +339,7 @@
               <span class="count-tag" id="support-modmail-count">0 THREADS</span>
             </div>
             <div class="modmail-sessions-list" id="modmail-list-container">
-              <div class="empty-state">No active DM modmail threads. When a member DMs the bot, they will appear here!</div>
+              <div class="empty-state">No active DM modmail threads. When a member DMs ABYSS, they will appear here!</div>
             </div>
 
             <!-- Modmail Quick Response Box -->
@@ -404,7 +404,7 @@
 
             <div class="form-group">
               <label for="activity-text">ACTIVITY TEXT PAYLOAD</label>
-              <input type="text" id="activity-text" placeholder="e.g. ?help | NEXUS ENGINE" value="?help | NEXUS ENGINE">
+              <input type="text" id="activity-text" placeholder="e.g. ?help | ABYSS" value="?help | ABYSS">
             </div>
 
             <button type="submit" id="save-presence-btn" class="cyber-btn primary">
@@ -425,9 +425,9 @@
             <strong>How to obtain credentials:</strong>
             <ol>
               <li>Go to <a href="https://discord.com/developers/applications" target="_blank" rel="noreferrer">Discord Developer Portal</a>.</li>
-              <li>Select or create your application.</li>
+              <li>Select your bot application (<strong>ABYSS</strong>).</li>
               <li>Under <strong>Bot</strong> tab, click <strong>Reset Token</strong> to copy your Bot Token.</li>
-              <li>Enable the 3 <strong>Privileged Gateway Intents</strong>: <em>Presence Intent</em>, <em>Server Members Intent</em>, <em>Message Content Intent</em> (as shown in your screenshot).</li>
+              <li>Enable the 3 <strong>Privileged Gateway Intents</strong>: <em>Presence Intent</em>, <em>Server Members Intent</em>, <em>Message Content Intent</em>.</li>
               <li>Paste below and click <strong>Save &amp; Reboot Engine</strong>.</li>
             </ol>
           </div>
@@ -457,7 +457,7 @@
     <footer class="cyber-footer cyber-panel">
       <div class="footer-left">
         <span class="hud-status-light"></span>
-        <span>CYBER-DECK COMMAND // PROTOCOL ACTIVE</span>
+        <span>ABYSS CYBER-DECK COMMAND // PROTOCOL ACTIVE</span>
       </div>
       <div class="footer-right">
         <span>SECURITY: ENCRYPTED</span>

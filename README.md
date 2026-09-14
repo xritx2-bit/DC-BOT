@@ -1,6 +1,6 @@
-# ⚡ NEXUS ENGINE // Cyber-Deck Discord Bot & Command Console
+# ⚡ ABYSS // Cyber-Deck Discord Bot & Command Console
 
-> **Next-Gen Autonomous Support & Server Operations**
+> **Into the dark. Full autonomous server command.**
 
 A high-performance Discord support, moderation, and utility bot paired with an **ultra-futuristic Cyber-Deck Web Console** (HUD interface with real-time WebSocket telemetry, live terminal log streaming, embed broadcasting, and remote controls).
 
@@ -17,7 +17,7 @@ A high-performance Discord support, moderation, and utility bot paired with an *
 
 ### 💻 Cyber-Deck Web Console (`http://localhost:3000`)
 - **Sci-Fi HUD Design**: Dark obsidian void with neon crimson & cyan accents, animated scanlines, holographic grids, and Web Audio synthesizer sound effects.
-- **Live Terminal**: Real-time WebSocket log streaming with category filters (`ALL`, `DISCORD`, `TICKETS`, `MODMAIL`, `VC`, `SYSTEM`, `ERROR`) and interactive command prompt.
+- **Live Terminal**: Real-time WebSocket log streaming with category filters (`ALL`, `DISCORD`, `TICKETS`, `MODMAIL`, `VC`, `SYSTEM`, `ERROR`) and interactive command prompt (`abyss@grid:~$`).
 - **System Telemetry**: Real-time Gateway Ping, RAM allocation progress meter, active tickets & dynamic VC counters, and server stats.
 - **Interactive Embed Studio**: Visual embed builder with live Discord card preview and 1-click broadcast to any server channel.
 - **Direct Support Deck**: Real-time monitor of open tickets and modmail sessions with instant direct messaging.
@@ -33,8 +33,8 @@ A high-performance Discord support, moderation, and utility bot paired with an *
 
 ### 2. Installation
 ```bash
-git clone https://github.com/<your-username>/<repo-name>.git
-cd <repo-name>
+git clone https://github.com/xritx2-bit/DC-BOT.git
+cd DC-BOT
 npm install
 ```
 

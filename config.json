@@ -1,9 +1,9 @@
 {
   "bot": {
-    "name": "NEXUS ENGINE",
-    "tagline": "Next-Gen Autonomous Support & Server Operations",
+    "name": "ABYSS",
+    "tagline": "Into the dark. Full autonomous server command.",
     "prefix": "?",
-    "statusText": "?help | NEXUS ENGINE",
+    "statusText": "?help | ABYSS",
     "statusType": "PLAYING",
     "presence": "online",
     "themeColor": "#FF1E27",
