@@ -565,7 +565,6 @@ async function sendDirectReplyFromConsole(client, userId, messageText, staffName
   logger.modmail(`Console dispatched DM to @${user.tag}: "${messageText}"`);
 
   // Track console reply in session history
-  const session = activeSessions.get(userId);
   if (session) {
     if (!session.messages) session.messages = [];
     session.messages.push({
