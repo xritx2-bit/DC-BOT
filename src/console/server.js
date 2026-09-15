@@ -14,7 +14,9 @@ const { EmbedBuilder } = require('discord.js');
 
 let ioInstance = null;
 
-function startConsoleServer(client, botManager) {
+function startConsoleServer(initialClient, botManager) {
+  const getClient = () => (botManager && botManager.client ? botManager.client : initialClient);
+
   const app = express();
   const server = http.createServer(app);
   const io = new Server(server, {
@@ -39,13 +41,28 @@ function startConsoleServer(client, botManager) {
     }
   });
 
+  // REST Status / Health Check
+  app.get('/api/status', (req, res) => {
+    const curClient = getClient();
+    const ready = !!(curClient && typeof curClient.isReady === 'function' && curClient.isReady());
+    res.json({
+      relay: 'ONLINE',
+      hasToken: !!(process.env.DISCORD_TOKEN && process.env.DISCORD_TOKEN.trim()),
+      engine: ready ? 'ONLINE' : 'AWAITING TOKEN',
+      botTag: ready ? curClient.user.tag : null,
+      ping: ready ? curClient.ws.ping : null,
+      uptime: Math.floor(process.uptime())
+    });
+  });
+
   // REST Channels Fetch
   app.get('/api/channels', (req, res) => {
-    if (!client || !client.isReady()) {
+    const curClient = getClient();
+    if (!curClient || !curClient.isReady()) {
       return res.json({ channels: [] });
     }
     const channels = [];
-    client.guilds.cache.forEach(guild => {
+    curClient.guilds.cache.forEach(guild => {
       guild.channels.cache.forEach(chan => {
         if (chan.isTextBased()) {
           channels.push({
@@ -62,10 +79,11 @@ function startConsoleServer(client, botManager) {
 
   // REST Guilds Fetch
   app.get('/api/guilds', (req, res) => {
-    if (!client || !client.isReady()) {
+    const curClient = getClient();
+    if (!curClient || !curClient.isReady()) {
       return res.json({ guilds: [] });
     }
-    const guilds = client.guilds.cache.map(g => ({
+    const guilds = curClient.guilds.cache.map(g => ({
       id: g.id,
       name: g.name,
       memberCount: g.memberCount,
@@ -75,7 +93,7 @@ function startConsoleServer(client, botManager) {
   });
 
   // Save Token to .env via Console if needed
-  app.post('/api/save-token', (req, res) => {
+  app.post('/api/save-token', async (req, res) => {
     const { token, clientId } = req.body;
     if (!token) return res.status(400).json({ error: 'Token is required' });
 
@@ -107,8 +125,15 @@ function startConsoleServer(client, botManager) {
       logger.system('Bot token updated via Cyber-Deck console. Restarting bot client...');
 
       if (botManager && botManager.restartBot) {
-        botManager.restartBot();
+        botManager.restartBot().catch(err => {
+          logger.error(`Engine restart error: ${err.message}`);
+        });
       }
+
+      // Immediately broadcast fresh telemetry to all clients after reboot delay
+      setTimeout(() => {
+        sendTelemetry(io, getClient);
+      }, 1500);
 
       res.json({ success: true, message: 'Configuration written. Bot restarting.' });
     } catch (e) {
@@ -124,7 +149,7 @@ function startConsoleServer(client, botManager) {
     socket.emit('recent_logs', logger.getRecentLogs());
 
     // Send initial telemetry
-    sendTelemetry(socket, client);
+    sendTelemetry(socket, getClient);
 
     // Terminal Command Execution
     socket.on('execute_command', async data => {
@@ -151,7 +176,8 @@ function startConsoleServer(client, botManager) {
         }
 
         if (cmd === 'ping') {
-          const ping = client && client.isReady() ? client.ws.ping : 'N/A';
+          const curClient = getClient();
+          const ping = curClient && curClient.isReady() ? curClient.ws.ping : 'N/A';
           logger.console(`Discord Gateway Heartbeat: ${ping}ms | Process Uptime: ${Math.floor(process.uptime())}s`);
           return;
         }
@@ -165,27 +191,28 @@ function startConsoleServer(client, botManager) {
         }
 
         if (cmd === 'tickets') {
-          const t = getActiveTickets();
+          const t = getActiveTickets(getClient());
           logger.console(`Active Support Tickets (${t.length}):`);
           t.forEach(item => logger.console(` - #${item.channelId} | User: @${item.username} | Cat: ${item.category}`));
           return;
         }
 
         if (cmd === 'modmail') {
-          const m = getActiveSessions();
+          const m = getActiveSessions(getClient());
           logger.console(`Active Modmail Sessions (${m.length}):`);
           m.forEach(item => logger.console(` - User: @${item.username} (ID: ${item.userId})`));
           return;
         }
 
         if (cmd === 'say') {
-          if (!client || !client.isReady()) {
+          const curClient = getClient();
+          if (!curClient || !curClient.isReady()) {
             logger.error('Discord client is not ready to broadcast.');
             return;
           }
           const channelId = args[0];
           const text = args.slice(1).join(' ');
-          const chan = client.channels.cache.get(channelId);
+          const chan = curClient.channels.cache.get(channelId);
           if (!chan) {
             logger.error(`Channel ID "${channelId}" not found in cache.`);
             return;
@@ -196,13 +223,14 @@ function startConsoleServer(client, botManager) {
         }
 
         if (cmd === 'status') {
-          if (!client || !client.isReady()) {
+          const curClient = getClient();
+          if (!curClient || !curClient.isReady()) {
             logger.error('Discord client is not online.');
             return;
           }
           const presence = args[0] || 'online';
           const actText = args.slice(1).join(' ') || config.bot.statusText;
-          client.user.setPresence({
+          curClient.user.setPresence({
             status: presence,
             activities: [{ name: actText }]
           });
@@ -218,7 +246,8 @@ function startConsoleServer(client, botManager) {
 
     // Update Status from UI controls
     socket.on('update_status', data => {
-      if (!client || !client.isReady()) return;
+      const curClient = getClient();
+      if (!curClient || !curClient.isReady()) return;
       const { status, activityType, activityText } = data;
       try {
         const typeMap = {
@@ -233,7 +262,7 @@ function startConsoleServer(client, botManager) {
         const actType = typeMap[activityType] !== undefined ? typeMap[activityType] : 4;
         const text = activityText || config.bot.statusText;
 
-        client.user.setPresence({
+        curClient.user.setPresence({
           status: status || 'online',
           activities: [
             {
@@ -251,14 +280,15 @@ function startConsoleServer(client, botManager) {
 
     // Update Application Description (About Me)
     socket.on('update_description', async data => {
-      if (!client || !client.isReady()) {
+      const curClient = getClient();
+      if (!curClient || !curClient.isReady()) {
         socket.emit('description_status', { success: false, error: 'Discord engine offline.' });
         return;
       }
       const { description } = data;
       try {
-        await client.application.fetch();
-        await client.application.edit({ description });
+        await curClient.application.fetch();
+        await curClient.application.edit({ description });
         logger.system(`Bot profile "About Me" description updated via Cyber-Deck.`);
         socket.emit('description_status', { success: true, message: 'Discord profile description updated successfully.' });
       } catch (e) {
@@ -269,12 +299,13 @@ function startConsoleServer(client, botManager) {
 
     // Broadcast Rich Embed from Cyber-Deck UI
     socket.on('broadcast_embed', async data => {
-      if (!client || !client.isReady()) {
+      const curClient = getClient();
+      if (!curClient || !curClient.isReady()) {
         socket.emit('embed_response', { success: false, message: 'Discord engine offline.' });
         return;
       }
       const { channelId, title, description, color, imageUrl, footer } = data;
-      const chan = client.channels.cache.get(channelId);
+      const chan = curClient.channels.cache.get(channelId);
       if (!chan) {
         socket.emit('embed_response', { success: false, message: 'Target channel not found.' });
         return;
@@ -301,10 +332,11 @@ function startConsoleServer(client, botManager) {
 
     // Modmail Direct Reply from Cyber-Deck
     socket.on('modmail_reply', async data => {
-      if (!client || !client.isReady()) return;
+      const curClient = getClient();
+      if (!curClient || !curClient.isReady()) return;
       const { userId, text } = data;
       try {
-        await sendDirectReplyFromConsole(client, userId, text);
+        await sendDirectReplyFromConsole(curClient, userId, text);
         socket.emit('modmail_reply_status', { success: true });
       } catch (err) {
         socket.emit('modmail_reply_status', { success: false, error: err.message });
@@ -313,10 +345,11 @@ function startConsoleServer(client, botManager) {
 
     // Close Support Ticket from Cyber-Deck UI
     socket.on('close_ticket', async data => {
+      const curClient = getClient();
       const { channelId } = data;
-      if (!channelId || !client || !client.isReady()) return;
+      if (!channelId || !curClient || !curClient.isReady()) return;
       try {
-        const chan = client.channels.cache.get(channelId);
+        const chan = curClient.channels.cache.get(channelId);
         if (chan) {
           await closeTicket(chan, 'Cyber-Deck Console');
           io.emit('new_log', {
@@ -327,7 +360,7 @@ function startConsoleServer(client, botManager) {
         } else {
           removeActiveTicket(channelId);
         }
-        sendTelemetry(io, client);
+        sendTelemetry(io, getClient);
       } catch (err) {
         logger.error(`Failed to close ticket from console: ${err.message}`);
       }
@@ -341,7 +374,7 @@ function startConsoleServer(client, botManager) {
 
   // Telemetry Interval (every 2 seconds)
   setInterval(() => {
-    sendTelemetry(io, client);
+    sendTelemetry(io, getClient);
   }, 2000);
 
   server.listen(port, '0.0.0.0', () => {
@@ -351,12 +384,13 @@ function startConsoleServer(client, botManager) {
   return { app, server, io };
 }
 
-function sendTelemetry(target, client) {
+function sendTelemetry(target, clientSource) {
   const mem = process.memoryUsage();
-  const clientReady = client && client.isReady();
+  const client = typeof clientSource === 'function' ? clientSource() : clientSource;
+  const clientReady = client && typeof client.isReady === 'function' && client.isReady();
 
   const telemetry = {
-    online: clientReady,
+    online: !!clientReady,
     botTag: clientReady ? client.user.tag : 'DISCORD_DISCONNECTED',
     botAvatar: clientReady ? client.user.displayAvatarURL() : null,
     uptimeSeconds: Math.floor(process.uptime()),

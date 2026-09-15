@@ -173,9 +173,9 @@ class BotManager {
   }
 
   async connectDiscord() {
-    const token = process.env.DISCORD_TOKEN;
+    let token = (process.env.DISCORD_TOKEN || '').trim().replace(/^["']|["']$/g, '');
 
-    if (!token || token === 'YOUR_DISCORD_BOT_TOKEN_HERE' || token.trim() === '') {
+    if (!token || token === 'YOUR_DISCORD_BOT_TOKEN_HERE') {
       logger.warn('----------------------------------------------------------------------');
       logger.warn('⚠️  DISCORD_TOKEN is not yet set in .env.');
       logger.warn('    The Cyber-Deck Web Console is ONLINE at http://localhost:' + (process.env.PORT || 3000));

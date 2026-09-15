@@ -648,8 +648,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (data.success) {
         statusMsg.className = 'status-msg success';
-        statusMsg.textContent = '✓ Credentials encrypted and written to .env. Bot engine restarting.';
+        statusMsg.textContent = '✓ Credentials saved. Connecting to Discord Gateway...';
         playBeepSuccess();
+        setTimeout(() => {
+          const termTab = document.querySelector('.hud-tab[data-tab="tab-terminal"]');
+          if (termTab) termTab.click();
+        }, 1200);
       } else {
         statusMsg.className = 'status-msg error';
         statusMsg.textContent = '✗ Error: ' + data.error;
