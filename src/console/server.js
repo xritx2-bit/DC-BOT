@@ -31,6 +31,14 @@ function startConsoleServer(initialClient, botManager) {
   app.use(express.json());
   app.use(express.static(path.join(__dirname, 'public')));
 
+  // 1-Click Custom Invite Redirect Route
+  app.get(['/invite', '/add'], (req, res) => {
+    const curClient = getClient();
+    const clientId = process.env.CLIENT_ID || (curClient && curClient.user ? curClient.user.id : '1549157789484449862');
+    const inviteUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&permissions=8&scope=bot%20applications.commands`;
+    res.redirect(inviteUrl);
+  });
+
   // REST Auth Check
   app.post('/api/auth', (req, res) => {
     const { pass } = req.body;

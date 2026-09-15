@@ -23,7 +23,9 @@ module.exports = {
         `• 🔊 **Dynamic "Join-to-Create" Voice Lounges** (\`?vchub\`)\n` +
         `• 🛡️ **Autonomous Server Moderation & Security Suite**\n` +
         `• 💻 **Cyber-Deck Web Console Telemetry & Controls**\n\n` +
-        `🔗 **Direct Authorization Link:**\n[Click Here to Invite ABYSS](${inviteUrl})`
+        `🔗 **Custom 1-Click Invite Link:**\n` +
+        `https://dc-bot-production-5855.up.railway.app/invite\n\n` +
+        `*(Or click the button below to authorize immediately)*`
       )
       .setFooter({ text: 'Requires Manage Server or Administrator permission to add bots.' })
       .setTimestamp();
