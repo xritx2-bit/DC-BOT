@@ -204,7 +204,7 @@ class BotManager {
       this.setupEventHandlers();
       // Reload .env
       delete require.cache[require.resolve('dotenv')];
-      require('dotenv').config();
+      require('dotenv').config({ override: true });
       await this.connectDiscord();
       logger.system('Reboot cycle completed successfully.');
     } catch (err) {

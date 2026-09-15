@@ -102,6 +102,8 @@ function startConsoleServer(client, botManager) {
       }
 
       fs.writeFileSync(envPath, envContent, 'utf8');
+      process.env.DISCORD_TOKEN = token;
+      if (clientId) process.env.CLIENT_ID = clientId;
       logger.system('Bot token updated via Cyber-Deck console. Restarting bot client...');
 
       if (botManager && botManager.restartBot) {
