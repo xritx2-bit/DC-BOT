@@ -12,9 +12,10 @@
     "accentColor": "#00F3FF",
     "darkColor": "#0A0B0E"
   },
+  "guildId": "1541068908063101049",
   "roles": {
-    "adminRoles": ["Admin", "Administrator", "Owner"],
-    "staffRoles": ["Staff", "Moderator", "Mod", "Helper", "Support Team", "Team"],
+    "adminRoles": ["Admin", "Administrator", "Owner", "owner.exe", "CEO"],
+    "staffRoles": ["Staff", "Moderator", "Mod", "Helper", "Support Team", "Team", "STAFF TEAM", "MANAGER", "TICKET CONTROLLER"],
     "autoRoleId": ""
   },
   "tickets": {
@@ -44,8 +45,18 @@
   },
   "modmail": {
     "enabled": true,
+    "guildId": "1541068908063101049",
     "categoryName": "DIRECT SUPPORT / MODMAIL",
-    "logChannelId": ""
+    "logChannelId": "",
+    "mentionRoles": [
+      "owner.exe",
+      "OWNER",
+      "ADMIN",
+      "MANAGER",
+      "MODERATOR",
+      "STAFF TEAM",
+      "TICKET CONTROLLER"
+    ]
   },
   "tempVoice": {
     "enabled": true,

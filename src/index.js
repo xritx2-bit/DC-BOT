@@ -9,7 +9,7 @@ const config = require('../config.json');
 const logger = require('./utils/logger');
 const { handleCommand } = require('./commands');
 const { handleTicketButton, handleChannelDelete } = require('./handlers/ticketHandler');
-const { handleDirectMessage, handleStaffReply, handleModmailChannelDelete } = require('./handlers/modmailHandler');
+const { handleDirectMessage, handleStaffReply, handleModmailChannelDelete, closeModmailSession } = require('./handlers/modmailHandler');
 const { handleVoiceStateUpdate } = require('./handlers/tempVcHandler');
 const { startConsoleServer } = require('./console/server');
 
@@ -141,6 +141,12 @@ class BotManager {
       if (message.content.startsWith(`${prefix}reply `) || message.content.startsWith(`${prefix}r `)) {
         const text = message.content.replace(/^(\?reply|\?r)\s+/, '');
         const handled = await handleStaffReply(message, text);
+        if (handled) return;
+      }
+
+      // Handle Staff Close shortcut in Modmail channels (?close or ?c)
+      if (message.content === `${prefix}close` || message.content === `${prefix}c`) {
+        const handled = await closeModmailSession(message.channel, message.author.tag);
         if (handled) return;
       }
 
