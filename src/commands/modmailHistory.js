@@ -61,9 +61,13 @@ module.exports = {
         previewText += `${tag} ${time}:\n${contentSnippet}\n\n`;
       }
 
+      const sessionGuild = message.client.guilds.cache.get(session.guildId);
+      const sessionGuildIcon = sessionGuild?.iconURL ? sessionGuild.iconURL({ dynamic: true }) : null;
+
       const detailEmbed = new EmbedBuilder()
         .setColor(PRIMARY_COLOR)
         .setTitle(`📩 MODMAIL CONVERSATION // @${session.username}`)
+        .setThumbnail(sessionGuildIcon || null)
         .setDescription(
           `**Originating Server:** **${session.guildName || 'Unknown Server'}** (${session.guildId || 'N/A'})\n` +
           `**Target User:** <@${session.userId}> (\`${session.userId}\`)\n` +

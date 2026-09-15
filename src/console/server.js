@@ -448,6 +448,12 @@ function sendTelemetry(target, clientSource) {
     ping: clientReady ? (client.ws.ping >= 0 ? client.ws.ping : 0) : 0,
     guildsCount: clientReady ? client.guilds.cache.size : 0,
     membersCount: clientReady ? client.guilds.cache.reduce((acc, g) => acc + g.memberCount, 0) : 0,
+    guilds: clientReady ? client.guilds.cache.map(g => ({
+      id: g.id,
+      name: g.name,
+      memberCount: g.memberCount || 0,
+      icon: g.iconURL ? g.iconURL({ dynamic: true }) : null
+    })) : [],
     activeTickets: getActiveTickets(client),
     activeModmail: getActiveSessions(client),
     archivedModmail: getArchivedSessions(20),

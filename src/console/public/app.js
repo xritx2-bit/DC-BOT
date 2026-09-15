@@ -143,6 +143,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (targetId === 'tab-embeds') {
         loadChannelsDropdown();
       }
+      if (targetId === 'tab-telemetry') {
+        loadInitialGuilds();
+      }
     });
   });
 
@@ -163,6 +166,8 @@ document.addEventListener('DOMContentLoaded', () => {
         type: 'SYSTEM',
         message: 'Direct Quantum WebSocket link established.'
       });
+      loadInitialGuilds();
+      loadChannelsDropdown();
     });
 
     socket.on('disconnect', () => {
@@ -305,11 +310,62 @@ document.addEventListener('DOMContentLoaded', () => {
     matrixGuildsCount.textContent = tele.guildsCount;
     matrixMembersCount.textContent = tele.membersCount;
 
+    // Matrix Tab - Connected Servers rendering
+    renderGuildsList(tele.guilds || []);
+
     // Support Tab - Tickets rendering
     renderSupportTickets(tele.activeTickets || []);
     // Support Tab - Modmail rendering
     renderModmailSessions(tele.activeModmail || []);
     renderModmailArchive(tele.archivedModmail || []);
+  }
+
+  function renderGuildsList(guilds) {
+    const container = document.getElementById('guilds-preview-list');
+    if (!container) return;
+
+    if (!guilds || guilds.length === 0) {
+      container.innerHTML = '<div class="empty-state">No Discord servers registered yet. Invite ABYSS ENGINE to your server!</div>';
+      return;
+    }
+
+    container.innerHTML = guilds.map(g => {
+      const name = escapeHtml(g.name || 'Unnamed Server');
+      const id = escapeHtml(g.id || '');
+      const count = (g.memberCount || 0).toLocaleString();
+      const initials = (name.split(/\s+/).map(w => w[0]).join('') || 'DC').slice(0, 3).toUpperCase();
+
+      const iconHtml = g.icon
+        ? `<img src="${g.icon}" alt="${name}" class="guild-icon" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';" /><div class="guild-icon-placeholder" style="display:none;">${initials}</div>`
+        : `<div class="guild-icon-placeholder">${initials}</div>`;
+
+      return `
+        <div class="guild-item">
+          <div class="guild-left">
+            ${iconHtml}
+            <div class="guild-info">
+              <span class="guild-name">${name}</span>
+              <span class="guild-id">ID: ${id}</span>
+            </div>
+          </div>
+          <div class="guild-badge">
+            <span>👥</span>
+            <span>${count} members</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  async function loadInitialGuilds() {
+    try {
+      const backend = getBackendUrl();
+      const res = await fetch(`${backend}/api/guilds`);
+      const data = await res.json();
+      if (data && data.guilds) {
+        renderGuildsList(data.guilds);
+      }
+    } catch (e) {}
   }
 
   function renderSupportTickets(tickets) {

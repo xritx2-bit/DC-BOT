@@ -267,14 +267,27 @@ async function openModmailSession(client, user, guild, initialContent, initialAt
 
       // Notify the user in DM if this was triggered directly by a message
       if (replyToMessage) {
-        await replyToMessage.reply({
-          embeds: [
-            infoEmbed(
-              'Support Session Connected',
-              `Your direct message has been securely transmitted to the staff team of **${guild.name}**. An operator will reply directly to this DM shortly.`
-            )
-          ]
-        }).catch(() => {});
+        const guildIcon = guild.iconURL({ dynamic: true });
+        const connectEmbed = new EmbedBuilder()
+          .setColor(0x00FF88)
+          .setTitle(`✅ SUPPORT SESSION CONNECTED`)
+          .setAuthor({
+            name: `${guild.name} Support Hub`,
+            iconURL: guildIcon || undefined
+          })
+          .setThumbnail(guildIcon || config.bot.logoUrl || null)
+          .setDescription(
+            `Your direct message has been securely transmitted to the staff team of **${guild.name}**.\n\n` +
+            `An operator will reply directly to this DM shortly.\n\n` +
+            `💬 *Type your message in this DM anytime to send additional updates or files.*`
+          )
+          .setFooter({
+            text: `${guild.name} • Direct Support Bridge`,
+            iconURL: guildIcon || undefined
+          })
+          .setTimestamp();
+
+        await replyToMessage.reply({ embeds: [connectEmbed] }).catch(() => {});
       }
     }
 
@@ -419,15 +432,29 @@ async function handleDirectMessage(client, message) {
         .addOptions(selectOptions)
     );
 
+    const serverListText = mutualGuilds.map((g, idx) => {
+      return `**${idx + 1}.** 🏛️ **${g.name}**\n*(ID: \`${g.id}\` • ${g.memberCount || 0} members)*`;
+    }).join('\n\n');
+
+    const firstGuildIcon = mutualGuilds.find(g => g.iconURL && g.iconURL())?.iconURL({ dynamic: true });
+
     const selectEmbed = new EmbedBuilder()
       .setColor(PRIMARY_COLOR)
-      .setTitle(`🌐 MULTIPLE SERVERS DETECTED`)
-      .setThumbnail(config.bot.logoUrl || null)
+      .setTitle(`🌐 SELECT COMMUNITY SERVER`)
+      .setAuthor({
+        name: `${config.bot.name} Direct Support Bridge`,
+        iconURL: config.bot.logoUrl || undefined
+      })
+      .setThumbnail(firstGuildIcon || config.bot.logoUrl || null)
       .setDescription(
         `You share **${mutualGuilds.length} servers** with **${config.bot.name}**.\n\n` +
-        `Please select which community server you need support from using the menu below:`
+        `Please select which community server you need support from using the menu below:\n\n` +
+        serverListText
       )
-      .setFooter({ text: `${config.bot.name} • Direct Support Bridge` })
+      .setFooter({
+        text: `${config.bot.name} • Direct Support Bridge`,
+        iconURL: config.bot.logoUrl || undefined
+      })
       .setTimestamp();
 
     await message.reply({ embeds: [selectEmbed], components: [row] });
@@ -464,15 +491,19 @@ async function handleStaffReply(message, replyText) {
       return true;
     }
 
-    const botName = config.bot.name || 'ABYSS ENGINE';
+    const guildIcon = message.guild.iconURL({ dynamic: true });
     const replyEmbed = new EmbedBuilder()
       .setColor(PRIMARY_COLOR)
       .setAuthor({
-        name: `${botName} Support (${message.author.tag})`,
-        iconURL: message.guild.iconURL({ dynamic: true }) || message.author.displayAvatarURL()
+        name: `${message.guild.name} Staff (${message.author.tag})`,
+        iconURL: guildIcon || message.author.displayAvatarURL()
       })
+      .setThumbnail(guildIcon || null)
       .setDescription(replyText)
-      .setFooter({ text: `${config.bot.name} • Reply to this DM to continue conversation.` })
+      .setFooter({
+        text: `${message.guild.name} • Reply to this DM to continue conversation.`,
+        iconURL: guildIcon || undefined
+      })
       .setTimestamp();
 
     await user.send({ embeds: [replyEmbed] });
@@ -508,12 +539,26 @@ async function sendDirectReplyFromConsole(client, userId, messageText, staffName
   const user = await client.users.fetch(userId);
   if (!user) throw new Error('User not found');
 
+  const session = activeSessions.get(userId);
+  let guild = null;
+  if (session && session.guildId) {
+    guild = client.guilds.cache.get(session.guildId) || await client.guilds.fetch(session.guildId).catch(() => null);
+  }
+
+  const guildIcon = guild?.iconURL ? guild.iconURL({ dynamic: true }) : null;
   const botName = config.bot.name || 'ABYSS ENGINE';
   const replyEmbed = new EmbedBuilder()
     .setColor(PRIMARY_COLOR)
-    .setAuthor({ name: `${botName} Support (${staffName})` })
+    .setAuthor({
+      name: guild ? `${guild.name} Support (${staffName})` : `${botName} Support (${staffName})`,
+      iconURL: guildIcon || undefined
+    })
+    .setThumbnail(guildIcon || null)
     .setDescription(messageText)
-    .setFooter({ text: `${config.bot.name} • Web Console Transmission` })
+    .setFooter({
+      text: guild ? `${guild.name} • Web Console Transmission` : `${config.bot.name} • Web Console Transmission`,
+      iconURL: guildIcon || undefined
+    })
     .setTimestamp();
 
   await user.send({ embeds: [replyEmbed] });
@@ -696,14 +741,26 @@ async function closeModmailSession(channel, closedBy = 'Staff') {
   try {
     const user = await channel.client.users.fetch(userId).catch(() => null);
     if (user) {
-      await user.send({
-        embeds: [
-          infoEmbed(
-            'Support Session Closed',
-            `Your direct support session with **${channel.guild.name}** has been closed by ${closedBy}. If you require further assistance, simply send another message to start a new session.`
-          )
-        ]
-      }).catch(() => {});
+      const guildIcon = channel.guild.iconURL({ dynamic: true });
+      const closeEmbed = new EmbedBuilder()
+        .setColor(0xFF2D55)
+        .setTitle(`🔒 SUPPORT SESSION CLOSED`)
+        .setAuthor({
+          name: `${channel.guild.name} Support Hub`,
+          iconURL: guildIcon || undefined
+        })
+        .setThumbnail(guildIcon || config.bot.logoUrl || null)
+        .setDescription(
+          `Your direct support session with **${channel.guild.name}** was concluded by **${closedBy}**.\n\n` +
+          `If you require further assistance in the future, simply send another direct message to start a new session.`
+        )
+        .setFooter({
+          text: `${channel.guild.name} • Direct Support Bridge`,
+          iconURL: guildIcon || undefined
+        })
+        .setTimestamp();
+
+      await user.send({ embeds: [closeEmbed] }).catch(() => {});
     }
 
     if (session) {
@@ -779,14 +836,29 @@ async function handleModmailGuildSelect(interaction) {
   const pending = pendingModmailSelections.get(user.id) || { content: '', attachments: [] };
   pendingModmailSelections.delete(user.id);
 
-  // Update DM interaction into confirmation state
+  // Update DM interaction into confirmation state with server logo
+  const guildIcon = guild.iconURL ? guild.iconURL({ dynamic: true }) : null;
+  const connectEmbed = new EmbedBuilder()
+    .setColor(0x00FF88)
+    .setTitle(`✅ SUPPORT SESSION CONNECTED`)
+    .setAuthor({
+      name: `${guild.name} Support Hub`,
+      iconURL: guildIcon || undefined
+    })
+    .setThumbnail(guildIcon || config.bot.logoUrl || null)
+    .setDescription(
+      `Your direct message session has been connected to **${guild.name}**.\n\n` +
+      `Staff officers and operators have received your transmission and will reply directly in this DM thread.\n\n` +
+      `💬 *Type your message in this DM anytime to send additional updates or files.*`
+    )
+    .setFooter({
+      text: `${guild.name} • Direct Support Bridge`,
+      iconURL: guildIcon || undefined
+    })
+    .setTimestamp();
+
   await interaction.update({
-    embeds: [
-      infoEmbed(
-        'Support Session Connected',
-        `Your direct message has been securely transmitted to the staff team of **${guild.name}**. An operator will reply directly to this DM shortly.`
-      )
-    ],
+    embeds: [connectEmbed],
     components: []
   });
 
