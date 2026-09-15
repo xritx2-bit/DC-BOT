@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/logo.png" alt="ABYSS Protocol" width="220" />
+  <img src="assets/logo.png" alt="ABYSS ENGINE Protocol" width="220" />
 </p>
 
-# ⚡ ABYSS // Cyber-Deck Discord Bot & Command Console
+# ⚡ ABYSS ENGINE // Cyber-Deck Discord Bot & Command Console
 
 > **Into the dark. Full autonomous server command.**
 

@@ -10,7 +10,7 @@ const logger = require('./utils/logger');
 const { handleCommand } = require('./commands');
 const { handleTicketButton, handleChannelDelete } = require('./handlers/ticketHandler');
 const { handleDirectMessage, handleStaffReply, handleModmailChannelDelete, closeModmailSession, handleModmailGuildSelect } = require('./handlers/modmailHandler');
-const { handleVoiceStateUpdate } = require('./handlers/tempVcHandler');
+const { handleVoiceStateUpdate, handleTempVcInteraction } = require('./handlers/tempVcHandler');
 const { startConsoleServer } = require('./console/server');
 
 class BotManager {
@@ -39,7 +39,7 @@ class BotManager {
   }
 
   init() {
-    const botName = config.bot.name || 'NEXUS ENGINE';
+    const botName = config.bot.name || 'ABYSS ENGINE';
     const tagline = config.bot.tagline || 'Next-Gen Autonomous Support & Server Operations';
     logger.system('⚡ ======================================================== ⚡');
     logger.system(`   ${botName} // FUTURISTIC DISCORD BOT & CYBER-DECK       `);
@@ -82,7 +82,7 @@ class BotManager {
           .replace('{servers}', `${guildCount} ${serverWord}`)
           .replace('{serverCount}', guildCount)
           .replace('{prefix}', config.bot.prefix || '?')
-          .replace('{name}', config.bot.name || 'ABYSS');
+          .replace('{name}', config.bot.name || 'ABYSS ENGINE');
 
         client.user.setPresence({
           status: config.bot.presence || 'online',
@@ -99,14 +99,14 @@ class BotManager {
         logger.error(`Presence synchronization error: ${err.message}`);
       }
 
-      // Sync bot avatar to official ABYSS logo
+      // Sync bot avatar to official ABYSS ENGINE logo
       try {
         const path = require('path');
         const fs = require('fs');
         const logoPath = path.join(__dirname, '../assets/logo.png');
         if (fs.existsSync(logoPath)) {
           client.user.setAvatar(logoPath).then(() => {
-            logger.system('Bot profile avatar synchronized with official ABYSS logo.');
+            logger.system('Bot profile avatar synchronized with official ABYSS ENGINE logo.');
           }).catch(err => {
             logger.system(`Avatar sync notice: ${err.message}`);
           });
@@ -154,8 +154,13 @@ class BotManager {
       await handleCommand(message, prefix);
     });
 
-    // Interaction Event (Ticket Support Buttons & Modmail Server Selection)
+    // Interaction Event (Ticket Support Buttons, Temp VC Matrix Buttons & Modmail Server Selection)
     client.on('interactionCreate', async interaction => {
+      // Temp VC Moderation Interactions (Buttons, Modals, User/String Select Menus)
+      if (interaction.customId && interaction.customId.startsWith('tvc_')) {
+        return handleTempVcInteraction(interaction);
+      }
+
       if (interaction.isStringSelectMenu() && interaction.customId === 'modmail_guild_select') {
         return handleModmailGuildSelect(interaction);
       }

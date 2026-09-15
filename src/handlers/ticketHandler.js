@@ -328,7 +328,7 @@ async function generateTranscript(channel) {
   const messages = await channel.messages.fetch({ limit: 100 });
   const sorted = Array.from(messages.values()).reverse();
 
-  const botName = config.bot.name || 'SUPPORT ENGINE';
+  const botName = config.bot.name || 'ABYSS ENGINE';
   let transcriptText = `==========================================================\n`;
   transcriptText += `  ${botName} // TICKET TRANSCRIPT LOG\n`;
   transcriptText += `  Channel: #${channel.name} (${channel.id})\n`;

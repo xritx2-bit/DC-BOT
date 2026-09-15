@@ -464,7 +464,7 @@ async function handleStaffReply(message, replyText) {
       return true;
     }
 
-    const botName = config.bot.name || 'SUPPORT ENGINE';
+    const botName = config.bot.name || 'ABYSS ENGINE';
     const replyEmbed = new EmbedBuilder()
       .setColor(PRIMARY_COLOR)
       .setAuthor({
@@ -508,7 +508,7 @@ async function sendDirectReplyFromConsole(client, userId, messageText, staffName
   const user = await client.users.fetch(userId);
   if (!user) throw new Error('User not found');
 
-  const botName = config.bot.name || 'SUPPORT ENGINE';
+  const botName = config.bot.name || 'ABYSS ENGINE';
   const replyEmbed = new EmbedBuilder()
     .setColor(PRIMARY_COLOR)
     .setAuthor({ name: `${botName} Support (${staffName})` })

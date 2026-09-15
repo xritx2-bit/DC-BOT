@@ -1,8 +1,8 @@
 {
   "bot": {
-    "name": "ABYSS",
+    "name": "ABYSS ENGINE",
     "tagline": "Into the dark. Full autonomous server command.",
-    "description": "**ABYSS** is the official support and utility bot built exclusively for the community. It is fully customized for Ticket Support, DM Support, VC Help, and overall server management.",
+    "description": "**ABYSS ENGINE** is the official support and utility bot built exclusively for the community. It is fully customized for Ticket Support, DM Support, VC Help, and overall server management.",
     "prefix": "?",
     "statusText": "?help",
     "statusType": "CUSTOM",

@@ -1,7 +1,7 @@
 {
-  "name": "cyber-engine-bot",
+  "name": "abyss-engine-bot",
   "version": "1.0.0",
-  "description": "Futuristic Discord Support, Moderation & Utility Bot with Cyber-Deck Web Console",
+  "description": "ABYSS ENGINE - Futuristic Discord Support, Moderation & Utility Bot with Cyber-Deck Web Console",
   "main": "src/index.js",
   "type": "commonjs",
   "scripts": {

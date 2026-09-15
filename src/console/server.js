@@ -328,7 +328,7 @@ function startConsoleServer(initialClient, botManager) {
       try {
         const embed = new EmbedBuilder()
           .setColor(color ? parseInt(color.replace('#', ''), 16) : 0xFF1E27)
-          .setTitle(title || `⚡ ${config.bot.name || 'CYBER ENGINE'} TRANSMISSION`)
+          .setTitle(title || `⚡ ${config.bot.name || 'ABYSS ENGINE'} TRANSMISSION`)
           .setDescription(description || '')
           .setTimestamp();
 

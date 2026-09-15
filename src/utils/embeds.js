@@ -47,7 +47,7 @@ function infoEmbed(title, description) {
 }
 
 function ticketPanelEmbed() {
-  const botName = config.bot.name || 'SUPPORT ENGINE';
+  const botName = config.bot.name || 'ABYSS ENGINE';
   const tagline = config.bot.tagline || 'Next-Gen Autonomous Support & Server Operations';
 
   return new EmbedBuilder()
@@ -69,7 +69,7 @@ function ticketPanelEmbed() {
 }
 
 function ticketWelcomeEmbed(user, categoryLabel) {
-  const botName = config.bot.name || 'SUPPORT ENGINE';
+  const botName = config.bot.name || 'ABYSS ENGINE';
 
   return new EmbedBuilder()
     .setColor(PRIMARY_COLOR)

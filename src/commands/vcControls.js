@@ -1,5 +1,5 @@
 const { PermissionsBitField } = require('discord.js');
-const { activeTempVcs } = require('../handlers/tempVcHandler');
+const { activeTempVcs, buildVcControlPanel } = require('../handlers/tempVcHandler');
 const { successEmbed, errorEmbed } = require('../utils/embeds');
 
 module.exports = {
@@ -27,6 +27,12 @@ module.exports = {
     }
 
     const sub = (cmdName || args[0] || '').toLowerCase();
+
+    // VCPANEL / PANEL
+    if (sub === 'vcpanel' || sub === 'panel' || sub === 'vchelp' || sub === 'vc') {
+      const panelPayload = buildVcControlPanel(voiceChannel, tempVcData.ownerId);
+      return message.reply(panelPayload);
+    }
 
     if (sub === 'vclock' || sub === 'lock') {
       await voiceChannel.permissionOverwrites.edit(message.guild.roles.everyone, {
@@ -63,7 +69,7 @@ module.exports = {
       embeds: [
         errorEmbed(
           'Unknown VC Command',
-          'Use `?vclock`, `?vcunlock`, or `?vclimit <1-99>` to manage your channel.'
+          'Use `?vcpanel` to open the 20-button moderation matrix, or `?vclock`, `?vcunlock`, `?vclimit <1-99>`.'
         )
       ]
     });

@@ -366,7 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!container) return;
 
     if (sessions.length === 0) {
-      container.innerHTML = '<div class="empty-state">No active DM modmail threads. When a member DMs ABYSS, they will appear here!</div>';
+      container.innerHTML = '<div class="empty-state">No active DM modmail threads. When a member DMs ABYSS ENGINE, they will appear here!</div>';
       return;
     }
 

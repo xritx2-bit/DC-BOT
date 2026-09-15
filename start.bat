@@ -1,9 +1,9 @@
 @echo off
-TITLE ABYSS // CYBER-DECK COMMAND CONSOLE
+TITLE ABYSS ENGINE // CYBER-DECK COMMAND CONSOLE
 COLOR 0C
 
 echo ======================================================================
-echo    ABYSS // FUTURISTIC DISCORD BOT & CYBER-DECK COMMAND CONSOLE
+echo    ABYSS ENGINE // FUTURISTIC DISCORD BOT & CYBER-DECK COMMAND CONSOLE
 echo    Into the dark. Full autonomous server command.
 echo ======================================================================
 echo.

@@ -7,7 +7,7 @@ module.exports = {
   description: 'Displays the futuristic command manual',
   execute: async (message, args) => {
     const p = config.bot.prefix || '?';
-    const botName = config.bot.name || 'NEXUS ENGINE';
+    const botName = config.bot.name || 'ABYSS ENGINE';
     const tagline = config.bot.tagline || 'Next-Gen Autonomous Support & Server Operations';
 
     const logo = config.bot.logoUrl || 'https://raw.githubusercontent.com/xritx2-bit/DC-BOT/main/assets/logo.png';
@@ -40,6 +40,7 @@ module.exports = {
           name: '🔊 VOICE & TEMP VC MANAGEMENT',
           value:
             `\`${p}vchub\` • Automatically deploy the "➕ Join to Create" dynamic VC hub\n` +
+            `\`${p}vcpanel\` (or \`${p}vc\`) • Deploy the 20-button Temp VC Moderation Matrix\n` +
             `\`${p}vclock\` • Lock your temporary voice channel to prevent other members from joining\n` +
             `\`${p}vcunlock\` • Unlock your temporary voice room\n` +
             `\`${p}vclimit <1-99>\` • Adjust member limit for your dynamic voice room`

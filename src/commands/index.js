@@ -26,6 +26,9 @@ commands.set('mmh', modmailHistoryCmd);
 commands.set('vclock', vcControls);
 commands.set('vcunlock', vcControls);
 commands.set('vclimit', vcControls);
+commands.set('vc', vcControls);
+commands.set('vcpanel', vcControls);
+commands.set('vchelp', vcControls);
 
 // Register Moderation Directives
 commands.set('kick', moderation);

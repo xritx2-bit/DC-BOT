@@ -4,7 +4,7 @@ const { PRIMARY_COLOR } = require('../utils/embeds');
 
 module.exports = {
   name: 'invite',
-  description: 'Generates the official 1-click invite link to add ABYSS to any Discord server',
+  description: 'Generates the official 1-click invite link to add ABYSS ENGINE to any Discord server',
   execute: async (message, args) => {
     const clientId = process.env.CLIENT_ID || message.client.user.id;
     const inviteUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&permissions=8&scope=bot%20applications.commands`;
@@ -12,10 +12,10 @@ module.exports = {
 
     const embed = new EmbedBuilder()
       .setColor(PRIMARY_COLOR)
-      .setTitle(`⚡ ${config.bot.name || 'ABYSS'} // MULTI-SERVER AUTHORIZATION LINK`)
+      .setTitle(`⚡ ${config.bot.name || 'ABYSS ENGINE'} // MULTI-SERVER AUTHORIZATION LINK`)
       .setThumbnail(logo)
       .setDescription(
-        `**Add ABYSS to any server across the grid with zero extra setup.**\n\n` +
+        `**Add ${config.bot.name || 'ABYSS ENGINE'} to any server across the grid with zero extra setup.**\n\n` +
         `Click the button below or use the direct link to authorize the engine for your Discord community.\n\n` +
         `**What you get instantly upon authorization:**\n` +
         `• 🎫 **Encrypted Ticket System** (\`?ticketpanel\`)\n` +

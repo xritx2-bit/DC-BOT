@@ -18,7 +18,7 @@ module.exports = {
   description: 'Futuristic telemetry & server utility commands',
   execute: async (message, args, cmdName) => {
     const client = message.client;
-    const botName = config.bot.name || 'NEXUS ENGINE';
+    const botName = config.bot.name || 'ABYSS ENGINE';
     const tagline = config.bot.tagline || 'Next-Gen Autonomous Support & Server Operations';
 
     // PING
