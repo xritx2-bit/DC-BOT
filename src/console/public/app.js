@@ -210,6 +210,22 @@ document.addEventListener('DOMContentLoaded', () => {
         playBeepError();
       }
     });
+
+    // Description update status
+    socket.on('description_status', res => {
+      const statusBox = document.getElementById('desc-status-msg');
+      if (!statusBox) return;
+      if (res.success) {
+        statusBox.className = 'status-msg success';
+        statusBox.textContent = '✓ Discord profile description updated successfully!';
+        playBeepSuccess();
+      } else {
+        statusBox.className = 'status-msg error';
+        statusBox.textContent = `✗ Update failed: ${res.error || 'Unknown error'}`;
+        playBeepError();
+      }
+      setTimeout(() => { statusBox.style.display = 'none'; }, 4000);
+    });
   }
 
   // ================= TELEMETRY UI UPDATER =================
@@ -218,6 +234,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const botOnlineVal = document.getElementById('bot-online-val');
     const botStatusPip = document.getElementById('bot-status-pip');
     const uptimeVal = document.getElementById('uptime-val');
+
+    if (tele.botDescription) {
+      const descInput = document.getElementById('bot-description-input');
+      if (descInput && !descInput.dataset.touched) {
+        descInput.value = tele.botDescription;
+      }
+    }
 
     if (tele.online) {
       botOnlineVal.textContent = 'ONLINE';
@@ -556,6 +579,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  window.applyStatusPreset = function(text) {
+    playCyberClick();
+    document.getElementById('activity-type').value = 'CUSTOM';
+    document.getElementById('activity-text').value = text;
+  };
+
   // ================= PRESENCE CONTROLLER =================
   document.getElementById('presence-form').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -578,6 +607,26 @@ document.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => { statusBox.style.display = 'none'; }, 4000);
     }
   });
+
+  // ================= ABOUT ME / DESCRIPTION CONTROLLER =================
+  const descInput = document.getElementById('bot-description-input');
+  if (descInput) {
+    descInput.addEventListener('input', () => {
+      descInput.dataset.touched = 'true';
+    });
+  }
+
+  const descForm = document.getElementById('description-form');
+  if (descForm) {
+    descForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      playCyberClick();
+      const description = document.getElementById('bot-description-input').value.trim();
+      if (socket) {
+        socket.emit('update_description', { description });
+      }
+    });
+  }
 
   // ================= CREDENTIALS VAULT =================
   document.getElementById('vault-form').addEventListener('submit', async (e) => {

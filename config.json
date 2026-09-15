@@ -2,9 +2,10 @@
   "bot": {
     "name": "ABYSS",
     "tagline": "Into the dark. Full autonomous server command.",
+    "description": "⚡ ABYSS // Autonomous Discord Support & Management Protocol.\n• 🎫 High-speed Ticket Support (Categories & Transcripts)\n• 📩 Private DM Support & Modmail Bridge\n• 🔊 Dynamic \"Join-to-Create\" Voice Lounges\n• 🛡️ Server Moderation & Security Directives\n• 💻 Sci-Fi Cyber-Deck Command Console HUD\n\nInto the dark. Full autonomous server command.",
     "prefix": "?",
-    "statusText": "?help | ABYSS",
-    "statusType": "PLAYING",
+    "statusText": "?help — abyss.gg — 75,284 servers",
+    "statusType": "CUSTOM",
     "presence": "online",
     "logoUrl": "https://raw.githubusercontent.com/xritx2-bit/DC-BOT/main/assets/logo.png",
     "themeColor": "#FF1E27",

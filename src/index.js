@@ -65,16 +65,36 @@ class BotManager {
 
       // Set initial futuristic status
       try {
+        const typeMap = {
+          PLAYING: ActivityType.Playing,
+          STREAMING: ActivityType.Streaming,
+          LISTENING: ActivityType.Listening,
+          WATCHING: ActivityType.Watching,
+          CUSTOM: ActivityType.Custom,
+          COMPETING: ActivityType.Competing
+        };
+
+        const chosenType = typeMap[config.bot.statusType] !== undefined ? typeMap[config.bot.statusType] : ActivityType.Custom;
+        const guildCount = client.guilds.cache.size.toLocaleString();
+        const serverWord = (guildCount === '1' || guildCount === 1) ? 'server' : 'servers';
+        const rawStatus = config.bot.statusText || '?help — abyss.gg — {servers}';
+        const resolvedText = rawStatus
+          .replace('{servers}', `${guildCount} ${serverWord}`)
+          .replace('{serverCount}', guildCount)
+          .replace('{prefix}', config.bot.prefix || '?')
+          .replace('{name}', config.bot.name || 'ABYSS');
+
         client.user.setPresence({
           status: config.bot.presence || 'online',
           activities: [
             {
-              name: config.bot.statusText || `?help | ${config.bot.name || 'NEXUS ENGINE'}`,
-              type: ActivityType[config.bot.statusType] || ActivityType.Playing
+              name: resolvedText,
+              state: resolvedText,
+              type: chosenType
             }
           ]
         });
-        logger.system(`Default presence engaged: [${config.bot.presence}] ${config.bot.statusText}`);
+        logger.system(`Default presence engaged: [${config.bot.presence}] ${resolvedText}`);
       } catch (err) {
         logger.error(`Presence synchronization error: ${err.message}`);
       }
@@ -90,6 +110,19 @@ class BotManager {
           }).catch(err => {
             logger.system(`Avatar sync notice: ${err.message}`);
           });
+        }
+      } catch (err) {}
+
+      // Auto-sync Discord bot application description ("About Me")
+      try {
+        if (config.bot.description) {
+          client.application.fetch().then(app => {
+            app.edit({ description: config.bot.description }).then(() => {
+              logger.system('Bot profile "About Me" description synchronized with Discord API.');
+            }).catch(e => {
+              logger.system(`Description sync notice: ${e.message}`);
+            });
+          }).catch(() => {});
         }
       } catch (err) {}
     });

@@ -40,6 +40,9 @@ commands.set('serverinfo', utility);
 commands.set('userinfo', utility);
 commands.set('say', utility);
 commands.set('announce', utility);
+commands.set('setstatus', utility);
+commands.set('setdesc', utility);
+commands.set('setdescription', utility);
 
 module.exports = {
   commands,

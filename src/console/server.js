@@ -224,21 +224,44 @@ function startConsoleServer(client, botManager) {
           STREAMING: 1,
           LISTENING: 2,
           WATCHING: 3,
+          CUSTOM: 4,
           COMPETING: 5
         };
+
+        const actType = typeMap[activityType] !== undefined ? typeMap[activityType] : 4;
+        const text = activityText || config.bot.statusText;
 
         client.user.setPresence({
           status: status || 'online',
           activities: [
             {
-              name: activityText || config.bot.statusText,
-              type: typeMap[activityType] || 0
+              name: text,
+              state: text,
+              type: actType
             }
           ]
         });
-        logger.system(`Status overridden via Cyber-Deck: [${status}] ${activityType}: ${activityText}`);
+        logger.system(`Status overridden via Cyber-Deck: [${status}] ${activityType}: ${text}`);
       } catch (e) {
         logger.error(`Failed to update status: ${e.message}`);
+      }
+    });
+
+    // Update Application Description (About Me)
+    socket.on('update_description', async data => {
+      if (!client || !client.isReady()) {
+        socket.emit('description_status', { success: false, error: 'Discord engine offline.' });
+        return;
+      }
+      const { description } = data;
+      try {
+        await client.application.fetch();
+        await client.application.edit({ description });
+        logger.system(`Bot profile "About Me" description updated via Cyber-Deck.`);
+        socket.emit('description_status', { success: true, message: 'Discord profile description updated successfully.' });
+      } catch (e) {
+        logger.error(`Failed to update application description: ${e.message}`);
+        socket.emit('description_status', { success: false, error: e.message });
       }
     });
 
@@ -343,7 +366,8 @@ function sendTelemetry(target, client) {
     membersCount: clientReady ? client.guilds.cache.reduce((acc, g) => acc + g.memberCount, 0) : 0,
     activeTickets: getActiveTickets(client),
     activeModmail: getActiveSessions(client),
-    activeTempVcs: getActiveTempVcs()
+    activeTempVcs: getActiveTempVcs(),
+    botDescription: clientReady && client.application ? client.application.description : (config.bot.description || '')
   };
 
   target.emit('telemetry', telemetry);

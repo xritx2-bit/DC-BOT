@@ -404,7 +404,8 @@
             <div class="form-group">
               <label for="activity-type">ACTIVITY DIRECTIVE</label>
               <select id="activity-type">
-                <option value="PLAYING" selected>Playing</option>
+                <option value="CUSTOM" selected>Custom Status (e.g. ?help — abyss.gg — 75,284 servers)</option>
+                <option value="PLAYING">Playing</option>
                 <option value="STREAMING">Streaming</option>
                 <option value="LISTENING">Listening to</option>
                 <option value="WATCHING">Watching</option>
@@ -414,13 +415,35 @@
 
             <div class="form-group">
               <label for="activity-text">ACTIVITY TEXT PAYLOAD</label>
-              <input type="text" id="activity-text" placeholder="e.g. ?help | ABYSS" value="?help | ABYSS">
+              <input type="text" id="activity-text" placeholder="e.g. ?help — abyss.gg — 75,284 servers" value="?help — abyss.gg — 75,284 servers">
+              <div class="preset-pills" style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px;">
+                <button type="button" class="cyber-btn small" onclick="applyStatusPreset('?help — abyss.gg — 75,284 servers')">Novax / Abyss Style</button>
+                <button type="button" class="cyber-btn small" onclick="applyStatusPreset('?help — abyss.gg — {servers}')">Live Server Count</button>
+                <button type="button" class="cyber-btn small" onclick="applyStatusPreset('?ticketpanel — Instant Support')">Tickets</button>
+                <button type="button" class="cyber-btn small" onclick="applyStatusPreset('?vchub — Dynamic Voice Lounges')">Voice Hub</button>
+              </div>
             </div>
 
             <button type="submit" id="save-presence-btn" class="cyber-btn primary">
               <span>SYNCHRONIZE PRESENCE TO DISCORD</span>
             </button>
             <div id="presence-status-msg" class="status-msg"></div>
+          </form>
+
+          <div class="desc-divider" style="height: 1px; background: var(--border-dim); margin: 32px 0 24px 0;"></div>
+
+          <h3 class="panel-heading">📝 DISCORD PROFILE "ABOUT ME" / DESCRIPTION</h3>
+          <p class="sub-info">Update the profile description displayed on your bot's Discord profile card across all servers.</p>
+
+          <form id="description-form" class="cyber-form matrix-form">
+            <div class="form-group">
+              <label for="bot-description-input">ABOUT ME / PROFILE BIO</label>
+              <textarea id="bot-description-input" rows="5" placeholder="Enter bot bio / description..."></textarea>
+            </div>
+            <button type="submit" id="save-desc-btn" class="cyber-btn primary">
+              <span>UPDATE BOT DESCRIPTION ON DISCORD</span>
+            </button>
+            <div id="desc-status-msg" class="status-msg"></div>
           </form>
         </div>
       </section>

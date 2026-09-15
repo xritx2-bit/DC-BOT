@@ -1,7 +1,7 @@
-const { EmbedBuilder, version: djsVersion } = require('discord.js');
+const { EmbedBuilder, ActivityType, PermissionsBitField, version: djsVersion } = require('discord.js');
 const os = require('os');
 const config = require('../../config.json');
-const { PRIMARY_COLOR, ACCENT_COLOR, infoEmbed } = require('../utils/embeds');
+const { PRIMARY_COLOR, ACCENT_COLOR, successEmbed, errorEmbed, infoEmbed } = require('../utils/embeds');
 const { getActiveTickets } = require('../handlers/ticketHandler');
 const { getActiveSessions } = require('../handlers/modmailHandler');
 
@@ -147,6 +147,64 @@ module.exports = {
         .setTimestamp();
 
       return message.channel.send({ embeds: [embed] });
+    }
+
+    // SETSTATUS (Format: ?setstatus ?help — abyss.gg — 75,284 servers)
+    if (cmdName === 'setstatus') {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator) &&
+          !message.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
+        return message.reply({ embeds: [errorEmbed('Access Denied', 'You require Administrator or Manage Server permissions to modify bot presence.')] });
+      }
+
+      const newStatus = args.join(' ');
+      if (!newStatus) {
+        return message.reply({
+          embeds: [errorEmbed('Syntax Error', `Usage: \`${config.bot.prefix}setstatus <status text>\`\nExample: \`${config.bot.prefix}setstatus ?help — abyss.gg — 75,284 servers\``)]
+        });
+      }
+
+      client.user.setPresence({
+        status: 'online',
+        activities: [
+          {
+            name: newStatus,
+            state: newStatus,
+            type: ActivityType.Custom
+          }
+        ]
+      });
+
+      return message.reply({
+        embeds: [successEmbed('Presence Synchronized', `Bot custom status updated to:\n**\`${newStatus}\`**`)]
+      });
+    }
+
+    // SETDESC (Updates Discord bot profile About Me description)
+    if (cmdName === 'setdesc' || cmdName === 'setdescription') {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator) &&
+          !message.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
+        return message.reply({ embeds: [errorEmbed('Access Denied', 'You require Administrator or Manage Server permissions to modify bot profile description.')] });
+      }
+
+      const newDesc = args.join(' ');
+      if (!newDesc) {
+        return message.reply({
+          embeds: [errorEmbed('Syntax Error', `Usage: \`${config.bot.prefix}setdesc <description>\``)]
+        });
+      }
+
+      try {
+        await client.application.fetch();
+        await client.application.edit({ description: newDesc });
+
+        return message.reply({
+          embeds: [successEmbed('Application Description Synchronized', `Bot profile "About Me" updated on Discord:\n\`\`\`\n${newDesc}\n\`\`\``)]
+        });
+      } catch (err) {
+        return message.reply({
+          embeds: [errorEmbed('Update Failed', `Could not update Discord description: ${err.message}`)]
+        });
+      }
     }
   }
 };
