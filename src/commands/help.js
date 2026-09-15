@@ -60,6 +60,7 @@ module.exports = {
             `\`${p}botinfo\` • View bot system metrics, uptime & memory telemetry\n` +
             `\`${p}serverinfo\` • Server overview and statistics\n` +
             `\`${p}userinfo [@user]\` • Inspect user credentials, roles, and status\n` +
+            `\`${p}invite\` • 1-Click invite link to add ${botName} to any server\n` +
             `\`${p}say <message>\` • Broadcast an official embed announcement`
         }
       )

@@ -14,7 +14,7 @@
   },
   "roles": {
     "adminRoles": ["Admin", "Administrator", "Owner"],
-    "staffRoles": ["Staff", "Moderator", "Support Team"],
+    "staffRoles": ["Staff", "Moderator", "Mod", "Helper", "Support Team", "Team"],
     "autoRoleId": ""
   },
   "tickets": {

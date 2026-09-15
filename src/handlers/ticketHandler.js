@@ -146,18 +146,27 @@ async function handleTicketButton(interaction) {
         }
       ];
 
-      // Add staff role permissions if they exist
+      // Add staff role permissions (by configured name OR by permission flags)
       const staffRoleNames = config.roles.staffRoles || [];
       guild.roles.cache.forEach(role => {
-        if (staffRoleNames.some(name => role.name.toLowerCase() === name.toLowerCase())) {
-          permissionOverwrites.push({
-            id: role.id,
-            allow: [
-              PermissionsBitField.Flags.ViewChannel,
-              PermissionsBitField.Flags.SendMessages,
-              PermissionsBitField.Flags.ReadMessageHistory
-            ]
-          });
+        if (role.id === guild.roles.everyone.id) return;
+        const nameMatch = staffRoleNames.some(name => role.name.toLowerCase().includes(name.toLowerCase()));
+        const hasStaffPerms = role.permissions.has(PermissionsBitField.Flags.Administrator) ||
+                              role.permissions.has(PermissionsBitField.Flags.ManageChannels) ||
+                              role.permissions.has(PermissionsBitField.Flags.ManageGuild) ||
+                              role.permissions.has(PermissionsBitField.Flags.ModerateMembers);
+
+        if (nameMatch || hasStaffPerms) {
+          if (!permissionOverwrites.some(p => p.id === role.id)) {
+            permissionOverwrites.push({
+              id: role.id,
+              allow: [
+                PermissionsBitField.Flags.ViewChannel,
+                PermissionsBitField.Flags.SendMessages,
+                PermissionsBitField.Flags.ReadMessageHistory
+              ]
+            });
+          }
         }
       });
 

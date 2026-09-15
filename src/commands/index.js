@@ -1,4 +1,5 @@
 const helpCmd = require('./help');
+const inviteCmd = require('./invite');
 const ticketpanelCmd = require('./ticketpanel');
 const vchubCmd = require('./vchub');
 const vcControls = require('./vcControls');
@@ -7,8 +8,9 @@ const utility = require('./utility');
 
 const commands = new Map();
 
-// Register Help
+// Register Help & Invite
 commands.set('help', helpCmd);
+commands.set('invite', inviteCmd);
 
 // Register Ticket & VC Hub
 commands.set('ticketpanel', ticketpanelCmd);

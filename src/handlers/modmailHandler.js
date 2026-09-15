@@ -20,15 +20,33 @@ async function handleDirectMessage(client, message) {
   const content = message.content;
   const attachments = Array.from(message.attachments.values()).map(a => a.url);
 
-  // Find target guild (first available guild or configured guild)
-  const guild = client.guilds.cache.get(process.env.GUILD_ID) || client.guilds.cache.first();
+  // Find target guild:
+  let guild = null;
+  let session = activeSessions.get(user.id);
+  if (session && session.guildId) {
+    guild = client.guilds.cache.get(session.guildId);
+  }
+
+  if (!guild) {
+    for (const [id, g] of client.guilds.cache) {
+      const isMember = await g.members.fetch(user.id).catch(() => null);
+      if (isMember) {
+        guild = g;
+        break;
+      }
+    }
+  }
+
+  if (!guild) {
+    guild = client.guilds.cache.get(process.env.GUILD_ID) || client.guilds.cache.first();
+  }
+
   if (!guild) {
     logger.warn('Modmail received but bot is not in any server yet.');
     return;
   }
 
   try {
-    let session = activeSessions.get(user.id);
     let channel;
 
     if (session) {
@@ -74,15 +92,24 @@ async function handleDirectMessage(client, message) {
 
       const staffRoleNames = config.roles.staffRoles || [];
       guild.roles.cache.forEach(role => {
-        if (staffRoleNames.some(name => role.name.toLowerCase() === name.toLowerCase())) {
-          permissionOverwrites.push({
-            id: role.id,
-            allow: [
-              PermissionsBitField.Flags.ViewChannel,
-              PermissionsBitField.Flags.SendMessages,
-              PermissionsBitField.Flags.ReadMessageHistory
-            ]
-          });
+        if (role.id === guild.roles.everyone.id) return;
+        const nameMatch = staffRoleNames.some(name => role.name.toLowerCase().includes(name.toLowerCase()));
+        const hasStaffPerms = role.permissions.has(PermissionsBitField.Flags.Administrator) ||
+                              role.permissions.has(PermissionsBitField.Flags.ManageChannels) ||
+                              role.permissions.has(PermissionsBitField.Flags.ManageGuild) ||
+                              role.permissions.has(PermissionsBitField.Flags.ModerateMembers);
+
+        if (nameMatch || hasStaffPerms) {
+          if (!permissionOverwrites.some(p => p.id === role.id)) {
+            permissionOverwrites.push({
+              id: role.id,
+              allow: [
+                PermissionsBitField.Flags.ViewChannel,
+                PermissionsBitField.Flags.SendMessages,
+                PermissionsBitField.Flags.ReadMessageHistory
+              ]
+            });
+          }
         }
       });
 
@@ -126,6 +153,7 @@ async function handleDirectMessage(client, message) {
         channelId: channel.id,
         userId: user.id,
         username: user.tag || user.username,
+        guildId: guild.id,
         startedAt: new Date().toISOString()
       });
       channelToUser.set(channel.id, user.id);
