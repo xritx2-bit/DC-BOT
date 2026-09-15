@@ -1,74 +1,31 @@
 const {
   ChannelType,
   PermissionsBitField,
-  EmbedBuilder
+  EmbedBuilder,
+  ActionRowBuilder,
+  StringSelectMenuBuilder
 } = require('discord.js');
 const config = require('../../config.json');
 const logger = require('../utils/logger');
 const { PRIMARY_COLOR, ACCENT_COLOR, successEmbed, infoEmbed } = require('../utils/embeds');
 
-// Active DM sessions: userId -> { channelId, username, startedAt }
+// Active DM sessions: userId -> { channelId, username, guildId, startedAt }
 const activeSessions = new Map();
 // Reverse lookup: channelId -> userId
 const channelToUser = new Map();
+// Pending server selections for users in multiple servers: userId -> { content, attachments, timestamp }
+const pendingModmailSelections = new Map();
 
-async function handleDirectMessage(client, message) {
-  if (message.author.bot) return;
-  if (!config.modmail || !config.modmail.enabled) return;
-
-  const user = message.author;
-  const content = message.content;
-  const attachments = Array.from(message.attachments.values()).map(a => a.url);
-
-  // Find target guild:
-  let guild = null;
-  let session = activeSessions.get(user.id);
-  if (session && session.guildId) {
-    guild = client.guilds.cache.get(session.guildId) || await client.guilds.fetch(session.guildId).catch(() => null);
-  }
-
-  // Check configured target guild / server ID first
-  const targetId = config.modmail?.guildId || config.guildId || process.env.GUILD_ID;
-  if (!guild && targetId) {
-    guild = client.guilds.cache.get(targetId) || await client.guilds.fetch(targetId).catch(() => null);
-    if (!guild) {
-      // In case targetId was passed as a channel or category ID in the server
-      const ch = client.channels.cache.get(targetId) || await client.channels.fetch(targetId).catch(() => null);
-      if (ch && ch.guild) {
-        guild = ch.guild;
-      }
-    }
-  }
-
-  // Fallback: Check mutual servers if no target was configured
-  if (!guild) {
-    for (const [id, g] of client.guilds.cache) {
-      const isMember = await g.members.fetch(user.id).catch(() => null);
-      if (isMember) {
-        guild = g;
-        break;
-      }
-    }
-  }
-
-  // Ultimate fallback to first cached guild
-  if (!guild) {
-    guild = client.guilds.cache.first();
-  }
-
-  if (!guild) {
-    logger.warn('Modmail received but bot is not in any server yet.');
-    return;
-  }
-
+async function openModmailSession(client, user, guild, initialContent, initialAttachments, replyToMessage = null) {
   try {
+    let session = activeSessions.get(user.id);
     let channel;
 
-    if (session) {
+    if (session && session.guildId === guild.id) {
       channel = guild.channels.cache.get(session.channelId) || await guild.channels.fetch(session.channelId).catch(() => null);
     }
 
-    // Fetch fresh channels from Discord REST API to eliminate stale deleted channels in cache
+    // Fetch fresh channels from Discord REST API
     const freshChannels = await guild.channels.fetch().catch(() => guild.channels.cache);
     const categoryName = config.modmail?.categoryName || 'DIRECT SUPPORT / MODMAIL';
     let category = freshChannels.find(
@@ -78,7 +35,7 @@ async function handleDirectMessage(client, message) {
     const sanitizedUsername = user.username.toLowerCase().replace(/[^a-z0-9]/g, '');
     const channelName = `dm-${sanitizedUsername || 'user'}`;
 
-    // If channel wasn't in activeSessions (e.g. after bot restart), reconnect to existing channel if it exists
+    // Reconnect to existing channel if it already exists under category (e.g. after bot restart)
     if (!channel && category) {
       channel = freshChannels.find(
         c => c && c.parentId === category.id && c.name.toLowerCase() === channelName
@@ -109,7 +66,7 @@ async function handleDirectMessage(client, message) {
         });
       }
 
-      // Channel permissions
+      // Base channel permissions
       const permissionOverwrites = [
         {
           id: guild.roles.everyone.id,
@@ -143,7 +100,6 @@ async function handleDirectMessage(client, message) {
         if (role.managed) return; // Skip bot-managed roles
 
         const roleNameLower = role.name.toLowerCase();
-        // Skip obvious bot roles
         if (roleNameLower === 'bots' || roleNameLower.includes('bot access') || roleNameLower.includes('xieron')) return;
 
         const isConfigured = configuredTargetRoles.some(entry =>
@@ -208,7 +164,6 @@ async function handleDirectMessage(client, message) {
         }
       }
 
-      // Explicitly enforce overwrites to avoid category inheritance wiping
       await channel.permissionOverwrites.set(permissionOverwrites).catch(() => {});
 
       activeSessions.set(user.id, {
@@ -232,7 +187,8 @@ async function handleDirectMessage(client, message) {
         .setThumbnail(user.displayAvatarURL({ dynamic: true }))
         .setDescription(
           `**User:** <@${user.id}> (${user.id})\n` +
-          `**Account Created:** <t:${Math.floor(user.createdTimestamp / 1000)}:R>\n\n` +
+          `**Account Created:** <t:${Math.floor(user.createdTimestamp / 1000)}:R>\n` +
+          `**Server Context:** **${guild.name}**\n\n` +
           `*To reply to this user, type:*\n` +
           `\`?reply <your message>\` or \`?r <your message>\` or simply use the Web Cyber-Deck Console.\n` +
           `*To close this session, type:*\n` +
@@ -246,32 +202,161 @@ async function handleDirectMessage(client, message) {
         allowedMentions: { roles: mentionRoleIds }
       });
 
-      // Notify the user in DM
-      await message.reply({
-        embeds: [
-          infoEmbed(
-            'Support Session Connected',
-            'Your direct message has been securely transmitted to our staff team. An operator will reply directly to this DM shortly.'
-          )
-        ]
-      });
+      // Notify the user in DM if this was triggered directly by a message
+      if (replyToMessage) {
+        await replyToMessage.reply({
+          embeds: [
+            infoEmbed(
+              'Support Session Connected',
+              `Your direct message has been securely transmitted to the staff team of **${guild.name}**. An operator will reply directly to this DM shortly.`
+            )
+          ]
+        }).catch(() => {});
+      }
     }
 
-    // Forward the message to the staff channel
+    // Forward the initial user message/attachments to the channel
     const msgEmbed = new EmbedBuilder()
       .setColor(ACCENT_COLOR)
       .setAuthor({ name: `${user.tag} (User DM)`, iconURL: user.displayAvatarURL({ dynamic: true }) })
-      .setDescription(content || '*[No text content]*')
+      .setDescription(initialContent || '*[No text content]*')
       .setTimestamp();
 
-    if (attachments.length > 0) {
-      msgEmbed.addFields({ name: '📎 Attachments', value: attachments.join('\n') });
+    if (initialAttachments && initialAttachments.length > 0) {
+      msgEmbed.addFields({ name: '📎 Attachments', value: initialAttachments.join('\n') });
     }
 
     await channel.send({ embeds: [msgEmbed] });
-    logger.modmail(`Forwarded DM from @${user.tag} to #${channel.name}`);
+    logger.modmail(`Forwarded DM from @${user.tag} to #${channel.name} in "${guild.name}"`);
+    return channel;
   } catch (err) {
-    logger.error(`Modmail DM processing failed: ${err.message}`, err.stack);
+    logger.error(`Failed to open modmail session in "${guild.name}": ${err.message}`, err.stack);
+    return null;
+  }
+}
+
+async function handleDirectMessage(client, message) {
+  if (message.author.bot) return;
+  if (!config.modmail || !config.modmail.enabled) return;
+
+  const user = message.author;
+  const content = message.content;
+  const attachments = Array.from(message.attachments.values()).map(a => a.url);
+
+  // 1. If user already has an active session, route directly to that channel
+  let session = activeSessions.get(user.id);
+  if (session && session.guildId) {
+    const guild = client.guilds.cache.get(session.guildId) || await client.guilds.fetch(session.guildId).catch(() => null);
+    if (guild) {
+      const channel = guild.channels.cache.get(session.channelId) || await guild.channels.fetch(session.channelId).catch(() => null);
+      if (channel) {
+        const msgEmbed = new EmbedBuilder()
+          .setColor(ACCENT_COLOR)
+          .setAuthor({ name: `${user.tag} (User DM)`, iconURL: user.displayAvatarURL({ dynamic: true }) })
+          .setDescription(content || '*[No text content]*')
+          .setTimestamp();
+
+        if (attachments.length > 0) {
+          msgEmbed.addFields({ name: '📎 Attachments', value: attachments.join('\n') });
+        }
+
+        await channel.send({ embeds: [msgEmbed] });
+        logger.modmail(`Forwarded DM from @${user.tag} to #${channel.name}`);
+        return;
+      }
+    }
+  }
+
+  // 2. If user already has a pending server selection in progress:
+  if (pendingModmailSelections.has(user.id)) {
+    const pending = pendingModmailSelections.get(user.id);
+    if (content) {
+      pending.content = (pending.content ? pending.content + '\n' : '') + content;
+    }
+    if (attachments.length > 0) {
+      pending.attachments.push(...attachments);
+    }
+    await message.reply({
+      embeds: [infoEmbed('Selection Required', 'Please select a community server from the dropdown menu above to connect your session.')]
+    }).catch(() => {});
+    return;
+  }
+
+  // 3. Scan mutual servers where both the bot and user are present
+  const mutualGuilds = [];
+  for (const [id, g] of client.guilds.cache) {
+    const isMember = await g.members.fetch(user.id).catch(() => null);
+    if (isMember) {
+      mutualGuilds.push(g);
+    }
+  }
+
+  // Case A: User is in exactly 1 server with the bot -> Route immediately!
+  if (mutualGuilds.length === 1) {
+    await openModmailSession(client, user, mutualGuilds[0], content, attachments, message);
+    return;
+  }
+
+  // Case B: User is in multiple servers (2+) -> Send interactive Select Menu in DM!
+  if (mutualGuilds.length > 1) {
+    pendingModmailSelections.set(user.id, {
+      content: content || '',
+      attachments: attachments || [],
+      timestamp: Date.now()
+    });
+
+    // Auto-expire after 10 minutes
+    setTimeout(() => {
+      if (pendingModmailSelections.has(user.id)) {
+        pendingModmailSelections.delete(user.id);
+      }
+    }, 10 * 60 * 1000);
+
+    const selectOptions = mutualGuilds.slice(0, 25).map(g => ({
+      label: g.name.slice(0, 100),
+      description: `Support & Modmail in ${g.name}`.slice(0, 100),
+      value: g.id,
+      emoji: '🌐'
+    }));
+
+    const row = new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId('modmail_guild_select')
+        .setPlaceholder('Select the server you need help with...')
+        .addOptions(selectOptions)
+    );
+
+    const selectEmbed = new EmbedBuilder()
+      .setColor(PRIMARY_COLOR)
+      .setTitle(`🌐 MULTIPLE SERVERS DETECTED`)
+      .setThumbnail(config.bot.logoUrl || null)
+      .setDescription(
+        `You share **${mutualGuilds.length} servers** with **${config.bot.name}**.\n\n` +
+        `Please select which community server you need support from using the menu below:`
+      )
+      .setFooter({ text: `${config.bot.name} • Direct Support Bridge` })
+      .setTimestamp();
+
+    await message.reply({ embeds: [selectEmbed], components: [row] });
+    return;
+  }
+
+  // Case C: User shares 0 servers with the bot -> Check configured primary guild or notify user
+  const primaryId = config.modmail?.guildId || config.guildId || process.env.GUILD_ID;
+  let fallbackGuild = null;
+  if (primaryId) {
+    fallbackGuild = client.guilds.cache.get(primaryId) || await client.guilds.fetch(primaryId).catch(() => null);
+  }
+  if (!fallbackGuild) {
+    fallbackGuild = client.guilds.cache.first();
+  }
+
+  if (fallbackGuild) {
+    await openModmailSession(client, user, fallbackGuild, content, attachments, message);
+  } else {
+    await message.reply({
+      embeds: [infoEmbed('No Shared Servers', `You do not currently share any Discord servers where ${config.bot.name} is installed.`)]
+    }).catch(() => {});
   }
 }
 
@@ -399,6 +484,39 @@ async function closeModmailSession(channel, closedBy = 'Staff') {
   }
 }
 
+async function handleModmailGuildSelect(interaction) {
+  if (!interaction.isStringSelectMenu() || interaction.customId !== 'modmail_guild_select') return;
+
+  const selectedGuildId = interaction.values[0];
+  const client = interaction.client;
+  const user = interaction.user;
+
+  const guild = client.guilds.cache.get(selectedGuildId) || await client.guilds.fetch(selectedGuildId).catch(() => null);
+  if (!guild) {
+    return interaction.update({
+      embeds: [infoEmbed('Server Unavailable', 'The selected server could not be resolved. Please send a new message to try again.')],
+      components: []
+    });
+  }
+
+  const pending = pendingModmailSelections.get(user.id) || { content: '', attachments: [] };
+  pendingModmailSelections.delete(user.id);
+
+  // Update DM interaction into confirmation state
+  await interaction.update({
+    embeds: [
+      infoEmbed(
+        'Support Session Connected',
+        `Your direct message has been securely transmitted to the staff team of **${guild.name}**. An operator will reply directly to this DM shortly.`
+      )
+    ],
+    components: []
+  });
+
+  // Open the channel in the selected guild and deliver initial message
+  await openModmailSession(client, user, guild, pending.content, pending.attachments, null);
+}
+
 module.exports = {
   handleDirectMessage,
   handleStaffReply,
@@ -406,5 +524,6 @@ module.exports = {
   getActiveSessions,
   handleModmailChannelDelete,
   closeModmailSession,
+  handleModmailGuildSelect,
   channelToUser
 };

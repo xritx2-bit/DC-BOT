@@ -9,7 +9,7 @@ const config = require('../config.json');
 const logger = require('./utils/logger');
 const { handleCommand } = require('./commands');
 const { handleTicketButton, handleChannelDelete } = require('./handlers/ticketHandler');
-const { handleDirectMessage, handleStaffReply, handleModmailChannelDelete, closeModmailSession } = require('./handlers/modmailHandler');
+const { handleDirectMessage, handleStaffReply, handleModmailChannelDelete, closeModmailSession, handleModmailGuildSelect } = require('./handlers/modmailHandler');
 const { handleVoiceStateUpdate } = require('./handlers/tempVcHandler');
 const { startConsoleServer } = require('./console/server');
 
@@ -154,8 +154,12 @@ class BotManager {
       await handleCommand(message, prefix);
     });
 
-    // Interaction Event (Ticket Support Buttons)
+    // Interaction Event (Ticket Support Buttons & Modmail Server Selection)
     client.on('interactionCreate', async interaction => {
+      if (interaction.isStringSelectMenu() && interaction.customId === 'modmail_guild_select') {
+        return handleModmailGuildSelect(interaction);
+      }
+
       if (interaction.isButton()) {
         await handleTicketButton(interaction);
       }
