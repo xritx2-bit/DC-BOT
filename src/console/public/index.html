@@ -349,14 +349,24 @@
           <div class="support-panel cyber-panel">
             <div class="sp-header">
               <h3 class="panel-heading">📩 MODMAIL DIRECT SUPPORT</h3>
-              <span class="count-tag" id="support-modmail-count">0 THREADS</span>
+              <div class="modmail-tab-controls">
+                <button type="button" class="modmail-subtab-btn active" id="btn-show-active-modmail" onclick="switchModmailView('active')">ACTIVE (<span id="support-modmail-count">0</span>)</button>
+                <button type="button" class="modmail-subtab-btn" id="btn-show-archive-modmail" onclick="switchModmailView('archive')">HISTORY (<span id="support-modmail-archive-count">0</span>)</button>
+              </div>
             </div>
+
+            <!-- Active Sessions List -->
             <div class="modmail-sessions-list" id="modmail-list-container">
               <div class="empty-state">No active DM modmail threads. When a member DMs ABYSS, they will appear here!</div>
             </div>
 
+            <!-- Archived History List -->
+            <div class="modmail-sessions-list" id="modmail-archive-container" style="display: none;">
+              <div class="empty-state">No archived modmail history recorded yet.</div>
+            </div>
+
             <!-- Modmail Quick Response Box -->
-            <div class="modmail-reply-box">
+            <div class="modmail-reply-box" id="modmail-quick-reply-box">
               <h4 class="sub-heading">DISPATCH DIRECT REPLY</h4>
               <form id="modmail-reply-form" class="cyber-form">
                 <div class="form-group">
@@ -486,6 +496,33 @@
           </form>
         </div>
       </section>
+
+    <!-- MODMAIL CONVERSATION VIEWER MODAL -->
+    <div id="modmail-chat-modal" class="cyber-modal-overlay" style="display: none;">
+      <div class="cyber-modal cyber-panel">
+        <div class="modal-header">
+          <div class="modal-header-left">
+            <h3 class="panel-heading" id="chat-modal-title">📩 CONVERSATION STREAM</h3>
+            <span class="server-badge" id="chat-modal-server">SERVER: MELIX MC</span>
+            <span class="status-tag" id="chat-modal-status">ACTIVE</span>
+          </div>
+          <button type="button" class="modal-close-btn" onclick="closeChatModal()">&times;</button>
+        </div>
+        <div class="modal-meta" id="chat-modal-meta">
+          User: @username (ID: ...) | Channel: #dm-user | Started: ...
+        </div>
+        <div class="chat-messages-stream" id="chat-messages-stream">
+          <!-- Messages dynamically populated -->
+        </div>
+        <div class="chat-modal-footer" id="chat-modal-footer">
+          <form id="chat-modal-reply-form" class="chat-reply-form">
+            <input type="text" id="chat-modal-reply-input" placeholder="Type direct reply to user..." autocomplete="off" required>
+            <button type="submit" class="cyber-btn primary small"><span>SEND REPLY</span></button>
+            <button type="button" class="cyber-btn small danger-outline" id="chat-modal-close-btn"><span>CLOSE SESSION</span></button>
+          </form>
+        </div>
+      </div>
+    </div>
 
     </main>
 

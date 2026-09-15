@@ -1,20 +1,66 @@
+const fs = require('fs');
+const path = require('path');
 const {
   ChannelType,
   PermissionsBitField,
   EmbedBuilder,
   ActionRowBuilder,
-  StringSelectMenuBuilder
+  StringSelectMenuBuilder,
+  AttachmentBuilder
 } = require('discord.js');
 const config = require('../../config.json');
 const logger = require('../utils/logger');
 const { PRIMARY_COLOR, ACCENT_COLOR, successEmbed, infoEmbed } = require('../utils/embeds');
 
-// Active DM sessions: userId -> { channelId, username, guildId, startedAt }
+const DATA_FILE = path.join(__dirname, '../../data/modmail_sessions.json');
+
+// Active DM sessions: userId -> sessionObject
 const activeSessions = new Map();
 // Reverse lookup: channelId -> userId
 const channelToUser = new Map();
 // Pending server selections for users in multiple servers: userId -> { content, attachments, timestamp }
 const pendingModmailSelections = new Map();
+// Archived historical sessions
+let archivedSessions = [];
+
+function loadSessionsFromDisk() {
+  try {
+    if (fs.existsSync(DATA_FILE)) {
+      const raw = fs.readFileSync(DATA_FILE, 'utf8');
+      const data = JSON.parse(raw);
+      if (Array.isArray(data.active)) {
+        for (const s of data.active) {
+          activeSessions.set(s.userId, s);
+          if (s.channelId) channelToUser.set(s.channelId, s.userId);
+        }
+      }
+      if (Array.isArray(data.archived)) {
+        archivedSessions = data.archived;
+      }
+      logger.system(`[MODMAIL ENGINE] Synchronized ${activeSessions.size} active & ${archivedSessions.length} archived sessions from disk.`);
+    }
+  } catch (err) {
+    logger.warn(`Failed to read modmail data file: ${err.message}`);
+  }
+}
+
+function saveSessionsToDisk() {
+  try {
+    const dir = path.dirname(DATA_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    const payload = {
+      active: Array.from(activeSessions.values()),
+      archived: archivedSessions.slice(-150)
+    };
+    fs.writeFileSync(DATA_FILE, JSON.stringify(payload, null, 2), 'utf8');
+  } catch (err) {
+    logger.error(`Failed to save modmail sessions: ${err.message}`);
+  }
+}
+
+loadSessionsFromDisk();
 
 async function openModmailSession(client, user, guild, initialContent, initialAttachments, replyToMessage = null) {
   try {
@@ -41,14 +87,23 @@ async function openModmailSession(client, user, guild, initialContent, initialAt
         c => c && c.parentId === category.id && c.name.toLowerCase() === channelName
       );
       if (channel) {
-        activeSessions.set(user.id, {
-          channelId: channel.id,
-          userId: user.id,
-          username: user.tag || user.username,
-          guildId: guild.id,
-          startedAt: new Date().toISOString()
-        });
+        if (!activeSessions.has(user.id)) {
+          activeSessions.set(user.id, {
+            id: `session_${user.id}_${Date.now()}`,
+            channelId: channel.id,
+            channelName: channel.name,
+            userId: user.id,
+            username: user.tag || user.username,
+            userAvatar: user.displayAvatarURL ? user.displayAvatarURL({ dynamic: true }) : null,
+            guildId: guild.id,
+            guildName: guild.name,
+            startedAt: new Date().toISOString(),
+            status: 'active',
+            messages: []
+          });
+        }
         channelToUser.set(channel.id, user.id);
+        saveSessionsToDisk();
       }
     }
 
@@ -166,14 +221,22 @@ async function openModmailSession(client, user, guild, initialContent, initialAt
 
       await channel.permissionOverwrites.set(permissionOverwrites).catch(() => {});
 
-      activeSessions.set(user.id, {
+      const sessionObj = {
+        id: `session_${user.id}_${Date.now()}`,
         channelId: channel.id,
+        channelName: channel.name,
         userId: user.id,
         username: user.tag || user.username,
+        userAvatar: user.displayAvatarURL ? user.displayAvatarURL({ dynamic: true }) : null,
         guildId: guild.id,
-        startedAt: new Date().toISOString()
-      });
+        guildName: guild.name,
+        startedAt: new Date().toISOString(),
+        status: 'active',
+        messages: []
+      };
+      activeSessions.set(user.id, sessionObj);
       channelToUser.set(channel.id, user.id);
+      saveSessionsToDisk();
 
       logger.modmail(`Opened direct support thread #${channel.name} in "${guild.name}" (${guild.id}) for @${user.tag}`);
 
@@ -213,6 +276,23 @@ async function openModmailSession(client, user, guild, initialContent, initialAt
           ]
         }).catch(() => {});
       }
+    }
+
+    // Record user's initial message in session history
+    const currentSession = activeSessions.get(user.id);
+    if (currentSession) {
+      if (!currentSession.messages) currentSession.messages = [];
+      currentSession.messages.push({
+        id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        authorId: user.id,
+        authorName: user.tag || user.username,
+        authorAvatar: user.displayAvatarURL ? user.displayAvatarURL({ dynamic: true }) : null,
+        isStaff: false,
+        content: initialContent || '',
+        attachments: initialAttachments || [],
+        timestamp: new Date().toISOString()
+      });
+      saveSessionsToDisk();
     }
 
     // Forward the initial user message/attachments to the channel
@@ -259,6 +339,19 @@ async function handleDirectMessage(client, message) {
         if (attachments.length > 0) {
           msgEmbed.addFields({ name: '📎 Attachments', value: attachments.join('\n') });
         }
+
+        if (!session.messages) session.messages = [];
+        session.messages.push({
+          id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          authorId: user.id,
+          authorName: user.tag || user.username,
+          authorAvatar: user.displayAvatarURL ? user.displayAvatarURL({ dynamic: true }) : null,
+          isStaff: false,
+          content: content || '',
+          attachments: attachments || [],
+          timestamp: new Date().toISOString()
+        });
+        saveSessionsToDisk();
 
         await channel.send({ embeds: [msgEmbed] });
         logger.modmail(`Forwarded DM from @${user.tag} to #${channel.name}`);
@@ -384,6 +477,23 @@ async function handleStaffReply(message, replyText) {
 
     await user.send({ embeds: [replyEmbed] });
 
+    // Track staff reply in session history
+    const session = activeSessions.get(userId);
+    if (session) {
+      if (!session.messages) session.messages = [];
+      session.messages.push({
+        id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        authorId: message.author.id,
+        authorName: message.author.tag || message.author.username,
+        authorAvatar: message.author.displayAvatarURL ? message.author.displayAvatarURL({ dynamic: true }) : null,
+        isStaff: true,
+        content: replyText,
+        attachments: [],
+        timestamp: new Date().toISOString()
+      });
+      saveSessionsToDisk();
+    }
+
     await message.react('✅');
     logger.modmail(`Staff @${message.author.tag} replied to @${user.tag} in #${message.channel.name}`);
     return true;
@@ -409,8 +519,24 @@ async function sendDirectReplyFromConsole(client, userId, messageText, staffName
   await user.send({ embeds: [replyEmbed] });
   logger.modmail(`Console dispatched DM to @${user.tag}: "${messageText}"`);
 
-  // Log in channel if open
+  // Track console reply in session history
   const session = activeSessions.get(userId);
+  if (session) {
+    if (!session.messages) session.messages = [];
+    session.messages.push({
+      id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      authorId: 'console',
+      authorName: `Staff Console (${staffName})`,
+      authorAvatar: null,
+      isStaff: true,
+      content: messageText,
+      attachments: [],
+      timestamp: new Date().toISOString()
+    });
+    saveSessionsToDisk();
+  }
+
+  // Log in channel if open
   if (session) {
     const channel = client.channels.cache.get(session.channelId);
     if (channel) {
@@ -431,27 +557,141 @@ async function sendDirectReplyFromConsole(client, userId, messageText, staffName
 function handleModmailChannelDelete(channel) {
   const userId = channelToUser.get(channel.id);
   if (userId) {
+    const session = activeSessions.get(userId);
+    if (session) {
+      session.status = 'closed';
+      session.closedAt = session.closedAt || new Date().toISOString();
+      session.closedBy = session.closedBy || 'Discord Channel Delete';
+      archivedSessions.unshift(session);
+      saveSessionsToDisk();
+    }
     activeSessions.delete(userId);
     channelToUser.delete(channel.id);
     logger.modmail(`Modmail channel #${channel.name} was removed. Cleaned active session.`);
   }
 }
 
-function getActiveSessions(client) {
+function generateModmailTranscriptText(session) {
+  let text = `================================================================================\n`;
+  text += `                MODMAIL DIRECT SUPPORT TRANSCRIPT\n`;
+  text += `================================================================================\n`;
+  text += `Session ID:    ${session.id || 'N/A'}\n`;
+  text += `Server Name:   ${session.guildName || 'Unknown Server'}\n`;
+  text += `Server ID:     ${session.guildId || 'N/A'}\n`;
+  text += `User Tag:      @${session.username} (${session.userId})\n`;
+  text += `Channel:       #${session.channelName || session.channelId || 'dm-support'}\n`;
+  text += `Started At:    ${session.startedAt || 'N/A'}\n`;
+  text += `Closed At:     ${session.closedAt || 'Still Active'}\n`;
+  text += `Closed By:     ${session.closedBy || 'N/A'}\n`;
+  text += `Total Messages: ${(session.messages || []).length}\n`;
+  text += `================================================================================\n\n`;
+
+  const msgs = session.messages || [];
+  for (const m of msgs) {
+    const time = m.timestamp ? new Date(m.timestamp).toLocaleString() : 'N/A';
+    const tag = m.isStaff ? `[STAFF] ${m.authorName}` : `[USER] ${m.authorName}`;
+    text += `[${time}] ${tag}:\n`;
+    text += `${m.content || '[No text]'}\n`;
+    if (m.attachments && m.attachments.length > 0) {
+      text += `Attachments: ${m.attachments.join(', ')}\n`;
+    }
+    text += `--------------------------------------------------------------------------------\n`;
+  }
+
+  return text;
+}
+
+function generateModmailTranscriptAttachment(session) {
+  const transcriptText = generateModmailTranscriptText(session);
+  const buffer = Buffer.from(transcriptText, 'utf-8');
+  const safeUser = (session.username || 'user').replace(/[^a-zA-Z0-9]/g, '_');
+  return new AttachmentBuilder(buffer, { name: `transcript-modmail-${safeUser}-${Date.now()}.txt` });
+}
+
+function getActiveSessionsDetailed(client) {
   if (client && client.channels && client.channels.cache) {
     for (const [userId, session] of activeSessions) {
       if (!client.channels.cache.has(session.channelId)) {
         channelToUser.delete(session.channelId);
+        session.status = 'closed';
+        session.closedAt = session.closedAt || new Date().toISOString();
+        session.closedBy = session.closedBy || 'Discord Channel Removed';
+        archivedSessions.unshift(session);
         activeSessions.delete(userId);
       }
     }
+    saveSessionsToDisk();
   }
-  return Array.from(activeSessions.values());
+
+  return Array.from(activeSessions.values()).map(s => {
+    const msgs = s.messages || [];
+    const lastMsg = msgs.length > 0 ? msgs[msgs.length - 1] : null;
+    return {
+      id: s.id,
+      channelId: s.channelId,
+      channelName: s.channelName || `dm-${s.username}`,
+      userId: s.userId,
+      username: s.username,
+      userAvatar: s.userAvatar,
+      guildId: s.guildId,
+      guildName: s.guildName || 'Community Server',
+      startedAt: s.startedAt,
+      status: s.status || 'active',
+      messagesCount: msgs.length,
+      lastMessage: lastMsg ? {
+        content: lastMsg.content,
+        authorName: lastMsg.authorName,
+        isStaff: lastMsg.isStaff,
+        timestamp: lastMsg.timestamp
+      } : null
+    };
+  });
+}
+
+function getActiveSessions(client) {
+  return getActiveSessionsDetailed(client);
+}
+
+function getArchivedSessions(limit = 25) {
+  return archivedSessions.slice(0, limit).map(s => {
+    const msgs = s.messages || [];
+    return {
+      id: s.id,
+      channelId: s.channelId,
+      channelName: s.channelName,
+      userId: s.userId,
+      username: s.username,
+      userAvatar: s.userAvatar,
+      guildId: s.guildId,
+      guildName: s.guildName || 'Community Server',
+      startedAt: s.startedAt,
+      closedAt: s.closedAt,
+      closedBy: s.closedBy,
+      status: 'closed',
+      messagesCount: msgs.length
+    };
+  });
+}
+
+function getSessionConversation(sessionIdOrUserId) {
+  for (const session of activeSessions.values()) {
+    if (session.id === sessionIdOrUserId || session.userId === sessionIdOrUserId || session.channelId === sessionIdOrUserId) {
+      return session;
+    }
+  }
+  for (const session of archivedSessions) {
+    if (session.id === sessionIdOrUserId || session.userId === sessionIdOrUserId || session.channelId === sessionIdOrUserId) {
+      return session;
+    }
+  }
+  return null;
 }
 
 async function closeModmailSession(channel, closedBy = 'Staff') {
   const userId = channelToUser.get(channel.id);
   if (!userId) return false;
+
+  const session = activeSessions.get(userId);
 
   try {
     const user = await channel.client.users.fetch(userId).catch(() => null);
@@ -466,8 +706,45 @@ async function closeModmailSession(channel, closedBy = 'Staff') {
       }).catch(() => {});
     }
 
-    activeSessions.delete(userId);
-    channelToUser.delete(channel.id);
+    if (session) {
+      session.status = 'closed';
+      session.closedAt = new Date().toISOString();
+      session.closedBy = closedBy;
+      archivedSessions.unshift(session);
+      activeSessions.delete(userId);
+      channelToUser.delete(channel.id);
+      saveSessionsToDisk();
+
+      // Post transcript to log channel if configured
+      try {
+        const targetLogChannelId = config.modmail?.logChannelId || config.tickets?.transcriptLogChannelId;
+        if (targetLogChannelId) {
+          const logChan = channel.guild.channels.cache.get(targetLogChannelId) || await channel.guild.channels.fetch(targetLogChannelId).catch(() => null);
+          if (logChan) {
+            const transcriptFile = generateModmailTranscriptAttachment(session);
+            const transcriptEmbed = new EmbedBuilder()
+              .setColor(PRIMARY_COLOR)
+              .setTitle(`📑 MODMAIL ARCHIVE // @${session.username}`)
+              .setDescription(
+                `**User:** <@${session.userId}> (${session.userId})\n` +
+                `**Server:** **${session.guildName}**\n` +
+                `**Channel:** #${channel.name}\n` +
+                `**Closed By:** ${closedBy}\n` +
+                `**Messages Exchanged:** ${session.messages.length}\n` +
+                `**Duration:** <t:${Math.floor(new Date(session.startedAt).getTime() / 1000)}:R> to <t:${Math.floor(new Date(session.closedAt).getTime() / 1000)}:R>`
+              )
+              .setTimestamp();
+
+            await logChan.send({ embeds: [transcriptEmbed], files: [transcriptFile] });
+          }
+        }
+      } catch (logErr) {
+        logger.warn(`Failed to post modmail transcript to log channel: ${logErr.message}`);
+      }
+    } else {
+      activeSessions.delete(userId);
+      channelToUser.delete(channel.id);
+    }
 
     await channel.send({
       embeds: [infoEmbed('Session Closed', `This direct support session was closed by ${closedBy}. Channel will be removed in 5 seconds.`)]
@@ -522,6 +799,11 @@ module.exports = {
   handleStaffReply,
   sendDirectReplyFromConsole,
   getActiveSessions,
+  getActiveSessionsDetailed,
+  getArchivedSessions,
+  getSessionConversation,
+  generateModmailTranscriptText,
+  generateModmailTranscriptAttachment,
   handleModmailChannelDelete,
   closeModmailSession,
   handleModmailGuildSelect,

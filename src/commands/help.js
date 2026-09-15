@@ -33,7 +33,8 @@ module.exports = {
           value:
             `• Direct Message the bot to initiate private communication with staff\n` +
             `\`${p}reply <message>\` (or \`${p}r\`) • Staff reply to relay messages back to user DMs\n` +
-            `• Web Console has real-time Modmail transmission interface`
+            `\`${p}close\` (or \`${p}c\`) • Close current modmail session and generate transcript\n` +
+            `\`${p}modmailhistory\` (or \`${p}modmails\`) • View active/archived sessions, servers, & transcripts`
         },
         {
           name: '🔊 VOICE & TEMP VC MANAGEMENT',

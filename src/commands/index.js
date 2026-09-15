@@ -5,6 +5,7 @@ const vchubCmd = require('./vchub');
 const vcControls = require('./vcControls');
 const moderation = require('./moderation');
 const utility = require('./utility');
+const modmailHistoryCmd = require('./modmailHistory');
 
 const commands = new Map();
 
@@ -15,6 +16,11 @@ commands.set('invite', inviteCmd);
 // Register Ticket & VC Hub
 commands.set('ticketpanel', ticketpanelCmd);
 commands.set('vchub', vchubCmd);
+
+// Register Modmail Archives & History
+commands.set('modmailhistory', modmailHistoryCmd);
+commands.set('modmails', modmailHistoryCmd);
+commands.set('mmh', modmailHistoryCmd);
 
 // Register VC Controls
 commands.set('vclock', vcControls);

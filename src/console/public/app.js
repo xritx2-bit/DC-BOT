@@ -8,6 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let activeLogFilter = 'ALL';
   let autoscrollEnabled = true;
   let logsStore = [];
+  let currentChatSessionId = null;
+  let currentChatUserId = null;
 
   // ================= WEB AUDIO SYNTHESIZER =================
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -203,12 +205,20 @@ document.addEventListener('DOMContentLoaded', () => {
     // Modmail reply status
     socket.on('modmail_reply_status', res => {
       if (res.success) {
-        alert('Transmission dispatched to user direct messages.');
         playBeepSuccess();
+        const modalInput = document.getElementById('chat-modal-reply-input');
+        if (modalInput) modalInput.value = '';
+        const formInput = document.getElementById('modmail-reply-text');
+        if (formInput) formInput.value = '';
       } else {
         alert('Failed to transmit message: ' + (res.error || 'Unknown error'));
         playBeepError();
       }
+    });
+
+    // Modmail conversation data stream
+    socket.on('modmail_conversation_data', res => {
+      renderConversationStream(res);
     });
 
     // Description update status
@@ -299,12 +309,15 @@ document.addEventListener('DOMContentLoaded', () => {
     renderSupportTickets(tele.activeTickets || []);
     // Support Tab - Modmail rendering
     renderModmailSessions(tele.activeModmail || []);
+    renderModmailArchive(tele.archivedModmail || []);
   }
 
   function renderSupportTickets(tickets) {
     const container = document.getElementById('tickets-list-container');
     const countTag = document.getElementById('support-ticket-count');
-    countTag.textContent = `${tickets.length} TICKETS`;
+    if (countTag) countTag.textContent = `${tickets.length} TICKETS`;
+
+    if (!container) return;
 
     if (tickets.length === 0) {
       container.innerHTML = '<div class="empty-state">No active support tickets at this time.</div>';
@@ -322,25 +335,98 @@ document.addEventListener('DOMContentLoaded', () => {
     `).join('');
   }
 
+  window.switchModmailView = function(view) {
+    playCyberClick();
+    const btnActive = document.getElementById('btn-show-active-modmail');
+    const btnArchive = document.getElementById('btn-show-archive-modmail');
+    const listActive = document.getElementById('modmail-list-container');
+    const listArchive = document.getElementById('modmail-archive-container');
+    const replyBox = document.getElementById('modmail-quick-reply-box');
+
+    if (view === 'archive') {
+      if (btnActive) btnActive.classList.remove('active');
+      if (btnArchive) btnArchive.classList.add('active');
+      if (listActive) listActive.style.display = 'none';
+      if (replyBox) replyBox.style.display = 'none';
+      if (listArchive) listArchive.style.display = 'flex';
+    } else {
+      if (btnActive) btnActive.classList.add('active');
+      if (btnArchive) btnArchive.classList.remove('active');
+      if (listActive) listActive.style.display = 'flex';
+      if (replyBox) replyBox.style.display = 'block';
+      if (listArchive) listArchive.style.display = 'none';
+    }
+  };
+
   function renderModmailSessions(sessions) {
     const container = document.getElementById('modmail-list-container');
     const countTag = document.getElementById('support-modmail-count');
-    countTag.textContent = `${sessions.length} THREADS`;
+    if (countTag) countTag.textContent = sessions.length;
+
+    if (!container) return;
 
     if (sessions.length === 0) {
-      container.innerHTML = '<div class="empty-state">No active DM modmail threads. When a member DMs the bot, they will appear here!</div>';
+      container.innerHTML = '<div class="empty-state">No active DM modmail threads. When a member DMs ABYSS, they will appear here!</div>';
       return;
     }
 
-    container.innerHTML = sessions.map(m => `
-      <div class="ticket-item" style="border-left-color: var(--accent-cyan);">
-        <div>
-          <div class="ticket-info-title">@${m.username} (ID: ${m.userId})</div>
-          <div class="ticket-meta">Channel: #${m.channelId} | Since: ${m.startedAt.split('T')[1].slice(0, 8)}</div>
+    container.innerHTML = sessions.map(m => {
+      const guildName = escapeHtml(m.guildName || 'Unknown Server');
+      const userDisplay = escapeHtml(m.username || m.userId);
+      const timeDisplay = m.startedAt ? m.startedAt.split('T')[1].slice(0, 8) : '--:--:--';
+      const msgCount = m.messageCount || 0;
+
+      return `
+        <div class="ticket-item" style="border-left-color: var(--accent-cyan);">
+          <div>
+            <div class="ticket-info-title">
+              @${userDisplay} <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal;">(ID: ${m.userId})</span>
+              <span class="server-badge">🌐 ${guildName}</span>
+            </div>
+            <div class="ticket-meta">Channel: #${m.channelId} | Since: ${timeDisplay} | Messages: ${msgCount}</div>
+          </div>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
+            <button class="cyber-btn small info-outline" onclick="openConversationModal('${m.id || m.userId}', '${m.userId}', '${userDisplay}')">VIEW TALK</button>
+            <button class="cyber-btn small" onclick="setModmailReplyTarget('${m.userId}')">REPLY</button>
+            <button class="cyber-btn small danger-outline" onclick="closeModmailDirect('${m.userId}')">CLOSE</button>
+          </div>
         </div>
-        <button class="cyber-btn small" onclick="setModmailReplyTarget('${m.userId}')">REPLY</button>
-      </div>
-    `).join('');
+      `;
+    }).join('');
+  }
+
+  function renderModmailArchive(archived) {
+    const container = document.getElementById('modmail-archive-container');
+    const countTag = document.getElementById('support-modmail-archive-count');
+    if (countTag) countTag.textContent = archived.length;
+
+    if (!container) return;
+
+    if (archived.length === 0) {
+      container.innerHTML = '<div class="empty-state">No archived modmail history recorded yet. Past completed sessions will be saved here with full transcripts.</div>';
+      return;
+    }
+
+    container.innerHTML = archived.map(m => {
+      const guildName = escapeHtml(m.guildName || 'Unknown Server');
+      const userDisplay = escapeHtml(m.username || m.userId);
+      const closedAt = m.closedAt ? m.closedAt.replace('T', ' ').slice(0, 19) : 'Archived';
+      const closedBy = escapeHtml(m.closedBy || 'Staff');
+      const msgCount = m.messageCount || (m.messages ? m.messages.length : 0);
+
+      return `
+        <div class="ticket-item" style="border-left-color: var(--accent-magenta);">
+          <div>
+            <div class="ticket-info-title">
+              @${userDisplay} <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal;">(ID: ${m.userId})</span>
+              <span class="server-badge">🌐 ${guildName}</span>
+            </div>
+            <div class="ticket-meta">Closed: ${closedAt} by ${closedBy} | Messages: ${msgCount}</div>
+          </div>
+          <button class="cyber-btn small info-outline" onclick="openConversationModal('${m.id || m.userId}', '${m.userId}', '${userDisplay}')">TRANSCRIPT</button>
+        </div>
+      `;
+    }).join('');
   }
 
   window.setModmailReplyTarget = function(userId) {
@@ -348,6 +434,119 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('modmail-user-id').value = userId;
     document.getElementById('modmail-reply-text').focus();
   };
+
+  window.openConversationModal = function(sessionId, userId, username) {
+    playCyberClick();
+    currentChatSessionId = sessionId;
+    currentChatUserId = userId;
+
+    const modal = document.getElementById('modmail-chat-modal');
+    const title = document.getElementById('chat-modal-title');
+    const serverBadge = document.getElementById('chat-modal-server');
+    const statusTag = document.getElementById('chat-modal-status');
+    const meta = document.getElementById('chat-modal-meta');
+    const stream = document.getElementById('chat-messages-stream');
+
+    if (title) title.textContent = `📩 CONVERSATION // @${username || userId}`;
+    if (serverBadge) serverBadge.textContent = 'CONNECTING...';
+    if (statusTag) {
+      statusTag.textContent = 'LOADING';
+      statusTag.className = 'status-tag';
+    }
+    if (meta) meta.textContent = `User ID: ${userId} | Fetching live quantum transmission stream...`;
+    if (stream) stream.innerHTML = '<div class="empty-state">Decrypting communications log...</div>';
+    if (modal) modal.style.display = 'flex';
+
+    if (socket) {
+      socket.emit('get_modmail_conversation', { sessionId, userId });
+    }
+  };
+
+  window.closeChatModal = function() {
+    playCyberClick();
+    const modal = document.getElementById('modmail-chat-modal');
+    if (modal) modal.style.display = 'none';
+    currentChatSessionId = null;
+    currentChatUserId = null;
+  };
+
+  window.closeModmailDirect = function(userId) {
+    playCyberClick();
+    if (confirm(`Close and archive modmail session for user ${userId}? A transcript will be created.`)) {
+      if (socket) {
+        socket.emit('close_modmail', { userId });
+      }
+    }
+  };
+
+  function renderConversationStream(res) {
+    if (!res || !res.success || !res.session) {
+      const stream = document.getElementById('chat-messages-stream');
+      if (stream) stream.innerHTML = '<div class="empty-state" style="color: var(--accent-crimson);">No conversation data available for this session.</div>';
+      return;
+    }
+
+    const s = res.session;
+    const serverBadge = document.getElementById('chat-modal-server');
+    const statusTag = document.getElementById('chat-modal-status');
+    const meta = document.getElementById('chat-modal-meta');
+    const stream = document.getElementById('chat-messages-stream');
+    const replyForm = document.getElementById('chat-modal-reply-form');
+
+    if (serverBadge) serverBadge.textContent = `SERVER: ${s.guildName || 'Unknown Server'}`;
+    if (statusTag) {
+      const isActive = s.status === 'active';
+      statusTag.textContent = isActive ? 'ACTIVE' : 'ARCHIVED';
+      statusTag.className = `status-tag ${isActive ? 'online' : 'offline'}`;
+      statusTag.style.color = isActive ? 'var(--accent-green)' : 'var(--accent-magenta)';
+      statusTag.style.borderColor = isActive ? 'var(--accent-green)' : 'var(--accent-magenta)';
+    }
+
+    const started = s.startedAt ? s.startedAt.replace('T', ' ').slice(0, 19) : 'N/A';
+    const closed = s.closedAt ? ` | Closed: ${s.closedAt.replace('T', ' ').slice(0, 19)} by ${escapeHtml(s.closedBy || 'Staff')}` : '';
+    if (meta) {
+      meta.textContent = `User: @${s.username || s.userId} (ID: ${s.userId}) | Started: ${started}${closed} | Messages: ${s.messages ? s.messages.length : 0}`;
+    }
+
+    if (replyForm) {
+      replyForm.style.display = s.status === 'archived' ? 'none' : 'flex';
+    }
+
+    if (!s.messages || s.messages.length === 0) {
+      if (stream) stream.innerHTML = '<div class="empty-state">No messages logged in this session yet.</div>';
+      return;
+    }
+
+    if (stream) {
+      stream.innerHTML = s.messages.map(msg => {
+        const isUser = msg.senderType === 'user';
+        const senderClass = isUser ? 'user' : 'staff';
+        const senderTag = isUser ? `@${escapeHtml(msg.author)} (Member)` : `🛡️ ${escapeHtml(msg.author)} (Staff)`;
+        const timeStr = msg.timestamp ? msg.timestamp.split('T')[1].slice(0, 8) : '--:--:--';
+        const contentHtml = escapeHtml(msg.content || '');
+
+        let attachHtml = '';
+        if (msg.attachments && msg.attachments.length > 0) {
+          attachHtml = `<div class="chat-attachments">` +
+            msg.attachments.map(url => `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">📎 View Attachment</a>`).join('') +
+            `</div>`;
+        }
+
+        return `
+          <div class="chat-bubble ${senderClass}">
+            <div class="chat-bubble-header">
+              <span class="chat-author">${senderTag}</span>
+              <span class="chat-time">${timeStr}</span>
+            </div>
+            <div class="chat-text">${contentHtml}</div>
+            ${attachHtml}
+          </div>
+        `;
+      }).join('');
+
+      stream.scrollTop = stream.scrollHeight;
+    }
+  }
 
   window.closeTicketDirect = function(channelId) {
     playCyberClick();
@@ -665,4 +864,54 @@ document.addEventListener('DOMContentLoaded', () => {
       playBeepError();
     }
   });
+
+  // ================= MODMAIL CONVERSATION MODAL INTERACTION =================
+  const modalReplyForm = document.getElementById('chat-modal-reply-form');
+  if (modalReplyForm) {
+    modalReplyForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!currentChatUserId) return;
+      const input = document.getElementById('chat-modal-reply-input');
+      const text = input ? input.value.trim() : '';
+      if (!text) return;
+
+      playCyberClick();
+      if (socket) {
+        socket.emit('modmail_reply', { userId: currentChatUserId, text });
+      }
+    });
+  }
+
+  const modalCloseBtn = document.getElementById('chat-modal-close-btn');
+  if (modalCloseBtn) {
+    modalCloseBtn.addEventListener('click', () => {
+      if (!currentChatUserId) return;
+      if (confirm(`Close and archive modmail session for user ID ${currentChatUserId}? A transcript will be recorded.`)) {
+        if (socket) {
+          socket.emit('close_modmail', { userId: currentChatUserId });
+          playBeepSuccess();
+          closeChatModal();
+        }
+      }
+    });
+  }
+
+  // Close modal on Escape or clicking backdrop
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const modal = document.getElementById('modmail-chat-modal');
+      if (modal && modal.style.display !== 'none') {
+        closeChatModal();
+      }
+    }
+  });
+
+  const modalOverlay = document.getElementById('modmail-chat-modal');
+  if (modalOverlay) {
+    modalOverlay.addEventListener('click', (e) => {
+      if (e.target === modalOverlay) {
+        closeChatModal();
+      }
+    });
+  }
 });

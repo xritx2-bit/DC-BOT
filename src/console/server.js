@@ -8,7 +8,13 @@ const cors = require('cors');
 const logger = require('../utils/logger');
 const config = require('../../config.json');
 const { getActiveTickets, closeTicket, removeActiveTicket } = require('../handlers/ticketHandler');
-const { getActiveSessions, sendDirectReplyFromConsole } = require('../handlers/modmailHandler');
+const {
+  getActiveSessions,
+  getArchivedSessions,
+  getSessionConversation,
+  sendDirectReplyFromConsole,
+  closeModmailSession
+} = require('../handlers/modmailHandler');
 const { getActiveTempVcs } = require('../handlers/tempVcHandler');
 const { EmbedBuilder } = require('discord.js');
 
@@ -346,9 +352,43 @@ function startConsoleServer(initialClient, botManager) {
       try {
         await sendDirectReplyFromConsole(curClient, userId, text);
         socket.emit('modmail_reply_status', { success: true });
+        // Emit updated conversation data back to sender
+        const session = getSessionConversation(userId);
+        if (session) {
+          socket.emit('modmail_conversation_data', { success: true, session });
+        }
       } catch (err) {
         socket.emit('modmail_reply_status', { success: false, error: err.message });
       }
+    });
+
+    // Request full conversation messages for a modmail session
+    socket.on('get_modmail_conversation', data => {
+      const { sessionId, userId } = data || {};
+      const session = getSessionConversation(sessionId || userId);
+      socket.emit('modmail_conversation_data', {
+        success: !!session,
+        session: session || null
+      });
+    });
+
+    // Close Modmail Session from Cyber-Deck UI
+    socket.on('close_modmail', async data => {
+      const curClient = getClient();
+      const { sessionId, userId, channelId } = data || {};
+      const session = getSessionConversation(sessionId || userId || channelId);
+      if (session && curClient) {
+        const chan = curClient.channels.cache.get(session.channelId);
+        if (chan) {
+          await closeModmailSession(chan, 'Cyber-Deck Web Console');
+          io.emit('new_log', {
+            type: 'MODMAIL',
+            message: `Modmail #${chan.name} (${session.guildName}) closed via Cyber-Deck Console`,
+            timestamp: new Date().toTimeString().split(' ')[0]
+          });
+        }
+      }
+      sendTelemetry(io, getClient);
     });
 
     // Close Support Ticket from Cyber-Deck UI
@@ -410,6 +450,7 @@ function sendTelemetry(target, clientSource) {
     membersCount: clientReady ? client.guilds.cache.reduce((acc, g) => acc + g.memberCount, 0) : 0,
     activeTickets: getActiveTickets(client),
     activeModmail: getActiveSessions(client),
+    archivedModmail: getArchivedSessions(20),
     activeTempVcs: getActiveTempVcs(),
     botDescription: clientReady && client.application ? client.application.description : (config.bot.description || '')
   };
